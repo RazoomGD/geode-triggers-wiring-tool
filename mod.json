@@ -1,0 +1,35 @@
+{
+	"geode": "3.4.0",
+	"gd": {
+		"win": "2.206",
+		"android": "2.206",
+		"mac": "2.206",
+		"ios": "2.206"
+	},
+	"id": "razoom.triggers-wiring-tool",
+	"name": "Triggers Wiring Tool",
+	"version": "v1.0.0-beta",
+	"developer": "RaZooM",
+	"description": "later",
+	"dependencies": [
+		{
+			"id": "geode.node-ids",
+			"importance": "required",
+			"version": ">=1.11.0"
+		},
+		{
+            "id": "geode.custom-keybinds",
+            "version": ">=1.7.1",
+            "importance": "required"
+        }
+	],
+	"settings": {
+		"control-key-modifier" : {
+			"type": "bool",
+			"default": true,
+			"name": "Use 'Ctrl' key as tool modifier",
+			"description": "When enabled, you can hold 'Ctrl' to use the tool",
+			"platforms": ["win"]
+		}
+	}
+}
