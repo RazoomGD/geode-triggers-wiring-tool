@@ -1,7 +1,7 @@
 #include <Geode/Geode.hpp>
 #include <Geode/modify/EditorUI.hpp>
 
-#ifdef GEODE_IS_WINDOWS
+#ifdef GEODE_IS_WINDOWS 
 #include <geode.custom-keybinds/include/Keybinds.hpp>
 #endif
 
@@ -37,9 +37,13 @@ class $modify(MyEditorUI, EditorUI) {
     };
 
     bool toolIsActivated() {
-        return ((m_fields->m_ctrlModifierEnabled && 
-            CCKeyboardDispatcher::get()->getControlKeyPressed()) || 
-            m_fields->m_buttonIsActivated) && !m_fields->m_panEditor;
+        #ifdef GEODE_IS_WINDOWS 
+            return ((m_fields->m_ctrlModifierEnabled && 
+                CCKeyboardDispatcher::get()->getControlKeyPressed()) || 
+                m_fields->m_buttonIsActivated) && !m_fields->m_panEditor;
+        #else
+            return m_fields->m_buttonIsActivate\d;
+        #endif
     }
 
     // ---------------------------- inits --------------------------------
@@ -55,49 +59,50 @@ class $modify(MyEditorUI, EditorUI) {
     }
 
     void initDebugLabel() {
-        auto winSize = CCDirector::sharedDirector()->getWinSize();
         auto debugLabel = CCLabelBMFont::create("", "bigFont.fnt");
-        debugLabel->setScale(.33f);
         auto btn = m_fields->m_button;
-        auto myMenu = btn->getParent();
-        auto undoMenu = myMenu->getParent();
-        debugLabel->setPosition(  // right under my button
-            myMenu->getPositionX() * undoMenu->getScaleX() + undoMenu->getPositionX(),
-            winSize.height - myMenu->getContentHeight() * undoMenu->getScaleY());
-        debugLabel->setID("debug-label");
+        auto buttonGlobalCoords = btn->convertToWorldSpace(btn->getPosition());
+        auto buttonCoordsOnEditorUI = this->convertToNodeSpace(buttonGlobalCoords);
+
+        debugLabel->setScale(.5f * btn->getScale());
+        // place debug label right under my button
+        debugLabel->setPosition(buttonCoordsOnEditorUI - 
+            ccp(0, btn->getContentSize().height / 2 + 10));
         debugLabel->setOpacity(0);
+        debugLabel->setID("debug-label");
+
         this->addChild(debugLabel, 999);
-        this->updateLayout();
         m_fields->m_debugLabel = debugLabel;
     }
 
     void initButtons() {
         auto bigBtn = CCMenuItemSpriteExtra::create(
-            CCSprite::createWithSpriteFrameName("GJ_likeBtn2_001.png"), this,
+            CCSprite::createWithSpriteFrameName("TWT_tool_off.png"_spr), this,
             menu_selector(MyEditorUI::onMyButton));
         m_fields->m_button = bigBtn;
-        auto menu = CCMenu::create();
-        if (true) { // todo add option to settings
+        auto twtMenu = CCMenu::create();
+        if (!Mod::get()->getSettingValue<bool>("hide-info-button")) {
             auto smallBtn = CCMenuItemSpriteExtra::create(
                 CCSprite::createWithSpriteFrameName("GJ_infoIcon_001.png"), this,
                 menu_selector(MyEditorUI::onInfoButton));
-            menu->addChild(smallBtn);
+            twtMenu->addChild(smallBtn);
             smallBtn->setZOrder(2);
         }
-        menu->setContentWidth(bigBtn->getContentWidth());
-        menu->setContentHeight(bigBtn->getContentHeight());
+        twtMenu->setContentWidth(bigBtn->getContentWidth());
+        twtMenu->setContentHeight(bigBtn->getContentHeight());
+        twtMenu->setID("twt-menu");
         
-        menu->addChild(bigBtn);
-        bigBtn->setPosition(menu->getContentSize() / 2);
+        twtMenu->addChild(bigBtn);
+        bigBtn->setPosition(twtMenu->getContentSize() / 2);
 
         auto undoMenu = this->getChildByID("undo-menu");
-        undoMenu->addChild(menu);
+        undoMenu->addChild(twtMenu);
         undoMenu->updateLayout();
     }
 
 
     void setKeybinds() {
-        #ifdef GEODE_IS_WINDOWS
+        #ifdef GEODE_IS_WINDOWS 
         this->template addEventListener<keybinds::InvokeBindFilter>(
             [=](keybinds::InvokeBindEvent* event) {
                 if (event->isDown()) {
@@ -136,10 +141,10 @@ class $modify(MyEditorUI, EditorUI) {
         m_fields->m_buttonIsActivated = !m_fields->m_buttonIsActivated;
         auto btn = m_fields->m_button;
         if (m_fields->m_buttonIsActivated) {
-            btn->setSprite(CCSprite::createWithSpriteFrameName("GJ_likeBtn_001.png"));
+            btn->setSprite(CCSprite::createWithSpriteFrameName("TWT_tool_on.png"_spr));
             showDebugText("Tool is on");
         } else {
-            btn->setSprite(CCSprite::createWithSpriteFrameName("GJ_likeBtn2_001.png"));
+            btn->setSprite(CCSprite::createWithSpriteFrameName("TWT_tool_off.png"_spr));
             m_fields->m_panEditor = false;
             resetTool();
             showDebugText("Tool is off");
@@ -147,9 +152,14 @@ class $modify(MyEditorUI, EditorUI) {
     }
 
     void onInfoButton(CCObject*) {
+        #ifdef GEODE_IS_WINDOWS
+            auto text = "This is <cp>windows</c>!";
+        #else
+            auto text = "This is <cp>not win</c>!";
+        #endif
         FLAlertLayer::create(
             "Color Example",
-            "This is <cp>pink text</c>!",
+            text,
             "OK"
         )->show();
     }
@@ -160,7 +170,9 @@ class $modify(MyEditorUI, EditorUI) {
         if (!EditorUI::init(layer)) return false;
         initButtons();
         setKeybinds();
-        m_fields->m_ctrlModifierEnabled = Mod::get()->getSettingValue<bool>("control-key-modifier");
+        #ifdef GEODE_IS_WINDOWS
+            m_fields->m_ctrlModifierEnabled = Mod::get()->getSettingValue<bool>("control-key-modifier");
+        #endif
         this->schedule(SEL_SCHEDULE(&MyEditorUI::controlTargetObjectCallback), 0.f);
         return true;
     }
@@ -170,9 +182,13 @@ class $modify(MyEditorUI, EditorUI) {
             if (m_fields->m_interfaceIsVisible) {
                 resetTool();
             }
-            handleTouchStart(touch);
-            m_fields->m_interfaceIsVisible = true;
-            return true;
+            auto isSelected = handleTouchStart(touch);
+            if (isSelected) {
+                m_fields->m_interfaceIsVisible = true;
+                return true;
+            } else {
+                return EditorUI::ccTouchBegan(touch, event);
+            }
         } else {
             return EditorUI::ccTouchBegan(touch, event);
         }
@@ -202,7 +218,7 @@ class $modify(MyEditorUI, EditorUI) {
 
     // --------------------------- Touch Handlers -----------------------------
 
-    void handleTouchStart(const CCTouch * const touch) {
+    bool handleTouchStart(const CCTouch * const touch) {
         m_fields->m_lineStart = screenToEditorLayerPosition(touch->getLocationInView());
         m_fields->m_lineEnd = screenToEditorLayerPosition(touch->getLocationInView());
 
@@ -212,7 +228,7 @@ class $modify(MyEditorUI, EditorUI) {
         // we check if we've started line from them
         bool useSelectedFlag = false;
         if (preSelected->count()) {
-            for (int i = 0; i < preSelected->count(); i++) {
+            for (unsigned i = 0; i < preSelected->count(); i++) {
                 auto obj = static_cast<GameObject*>(preSelected->objectAtIndex(i));
                 auto objBox = obj->boundingBox();
                 auto click = m_fields->m_lineStart;
@@ -229,9 +245,7 @@ class $modify(MyEditorUI, EditorUI) {
         if (useSelectedFlag) {
             sourceObjects = preSelected;
         } else {
-            auto startObj = LevelEditorLayer::get()->objectAtPosition(
-                m_fields->m_lineStart);  // LevelEditorLayer.hpp:545 changed
-            // EditorUI::clickOnPosition(m_fields->m_lineStart);
+            auto startObj = LevelEditorLayer::get()->objectAtPosition(m_fields->m_lineStart);
             if (startObj) {
                 EditorUI::selectObject(startObj, false);
                 sourceObjects = EditorUI::getSelectedObjects();
@@ -240,7 +254,7 @@ class $modify(MyEditorUI, EditorUI) {
                 // get the most average object
                 double sumX = 0;
                 double sumY = 0;
-                for (int i = 0; i < preSelected->count(); i++) {
+                for (unsigned i = 0; i < preSelected->count(); i++) {
                     auto obj = static_cast<GameObject*>(preSelected->objectAtIndex(i));
                     sumX += obj->getPositionX();
                     sumY += obj->getPositionY();
@@ -251,17 +265,18 @@ class $modify(MyEditorUI, EditorUI) {
 
         if (sourceObjects) {
             EditorUI::deselectAll();
-            for (int i = 0; i < sourceObjects->count(); i++) {
+            for (unsigned i = 0; i < sourceObjects->count(); i++) {
                 auto obj = static_cast<GameObject*>(sourceObjects->objectAtIndex(i));
                 obj->selectObject(ccc3(255, 0, 255));
             }
             m_fields->m_objectsSource = sourceObjects;
-            showDebugText(std::string("Selected objects: ") +
-                          std::to_string(sourceObjects->count()));
+            showDebugText(std::format("Selected objects: {}", sourceObjects->count()));
         } else {
             showDebugText("No objects selected");
+            return false;
         }
         updateLine(false);
+        return true;
     }
 
     void handleTouchMiddle(const CCTouch * const touch) {
@@ -289,14 +304,14 @@ class $modify(MyEditorUI, EditorUI) {
     // ------------------------------ upper menu logic -----------------------------------
 
     struct UpperMenuButtonParameters : public CCObject {
-        //                  button-text  trig-modifier source-func  
-        std::pair<std::pair<std::string, std::string>, short> m_config;
-        UpperMenuButtonParameters(std::pair<std::pair<std::string, std::string>, short> const& config) : m_config(config) {
+        //        button-text  trig-modifier  
+        std::pair<std::string, std::string> m_config;
+        UpperMenuButtonParameters(std::pair<std::string, std::string> const& config) : m_config(config) {
             this->autorelease();
         }
     };
 
-    void createUpperMenu(const std::vector<std::pair<std::pair<std::string, std::string>, short>>& configuration, bool selectFirst) {
+    void createUpperMenu(const std::vector<std::pair<std::string, std::string>>& configuration, bool selectFirst) {
         // remove old menu
         if (m_fields->m_upperMenu) m_fields->m_upperMenu->removeFromParent();
         // create new menu
@@ -306,16 +321,16 @@ class $modify(MyEditorUI, EditorUI) {
                             ->setGrowCrossAxis(true)
                             ->setAxisAlignment(AxisAlignment::Start)
                             ->setCrossAxisLineAlignment(AxisAlignment::End));
-        menu->setContentSize({0.f, 100.f});
-        menu->setAnchorPoint({1.f, 0.f});
+        menu->setContentSize(CCSizeMake(0, 200));
+        menu->setAnchorPoint(ccp(1, 0));
         menu->setTouchPriority(-120);
         m_fields->m_upperMenu = menu;
         // add buttons
-        for (int i = 0; i < configuration.size(); i++) {
+        for (unsigned i = 0; i < configuration.size(); i++) {
             auto btnNode = CCNode::create();
-            auto label = CCLabelBMFont::create(configuration[i].first.first.c_str(), "bigFont.fnt");
+            auto label = CCLabelBMFont::create(configuration[i].first.c_str(), "bigFont.fnt");
             label->setScale(0.5f);
-            label->setAnchorPoint({0.f, 0.f});
+            label->setAnchorPoint(ccp(0, 0));
             btnNode->addChild(label);
             btnNode->setContentSize(label->getScaledContentSize());
 
@@ -325,9 +340,7 @@ class $modify(MyEditorUI, EditorUI) {
             btn->setUserObject(new UpperMenuButtonParameters(configuration[i]));
             menu->addChild(btn);
 
-            if (i == 0 && selectFirst) {
-                upperMenuActionListener(btn);
-            }
+            if (i == 0 && selectFirst) upperMenuActionListener(btn);
         }
         menu->updateLayout();
     }
@@ -337,22 +350,21 @@ class $modify(MyEditorUI, EditorUI) {
         auto menu = m_fields->m_upperMenu;
         // clear old marker
         auto buttons = menu->getChildren();
-        for (int i = 0; i < buttons->count(); i++) {
+        for (unsigned i = 0; i < buttons->count(); i++) {
             auto btn = static_cast<CCMenuItemSpriteExtra*>(buttons->objectAtIndex(i));
             btn->removeChildByID("marker");
         }
         // add new marker
         auto button = static_cast<CCMenuItemSpriteExtra*>(sender);
         auto marker = CCLabelBMFont::create("<", "bigFont.fnt");
-        marker->setAnchorPoint(ccp(0.f, 0.f));
-        marker->setPosition(ccp(button->getContentSize().width + 1.f, 0.f));
+        marker->setAnchorPoint(ccp(0, 0));
+        marker->setPosition(ccp(button->getContentSize().width + 1, 0));
         marker->setScale(.5f);
         marker->setID("marker");
         button->addChild(marker);
         // update m_globalConfig
         auto config = static_cast<UpperMenuButtonParameters*>(button->getUserObject())->m_config;
-        m_fields->m_globalConfig.targetStr = config.first.second;
-        m_fields->m_globalConfig.sourceFunc = config.second;
+        m_fields->m_globalConfig.targetStr = config.second;
 
         applyToolConfig();
     }
@@ -378,12 +390,12 @@ class $modify(MyEditorUI, EditorUI) {
                             ->setAxisAlignment(AxisAlignment::End)
                             ->setAxisReverse(true)
                             ->setCrossAxisLineAlignment(AxisAlignment::End));
-        menu->setContentSize({0.f, 100.f});
-        menu->setAnchorPoint({1.f, 1.f});
+        menu->setContentSize(CCSizeMake(0, 200));
+        menu->setAnchorPoint(ccp(1, 1));
         menu->setTouchPriority(-120);
         m_fields->m_lowerMenu = menu;
         // add buttons
-        for (int i = 0; i < configuration.size(); i++) {
+        for (unsigned i = 0; i < configuration.size(); i++) {
             auto btnNode = CCNode::create();
             auto label = CCLabelBMFont::create(configuration[i].first.c_str(), "bigFont.fnt");
             label->setScale(0.5f);
@@ -408,15 +420,15 @@ class $modify(MyEditorUI, EditorUI) {
         auto menu = m_fields->m_lowerMenu;
         // remove old marker
         auto buttons = menu->getChildren();
-        for (int i = 0; i < buttons->count(); i++) {
+        for (unsigned i = 0; i < buttons->count(); i++) {
             auto btn = static_cast<CCMenuItemSpriteExtra*>(buttons->objectAtIndex(i));
             btn->removeChildByID("marker");
         }
         // add new marker
         auto button = static_cast<CCMenuItemSpriteExtra*>(sender);
         auto marker = CCLabelBMFont::create("<", "bigFont.fnt");
-        marker->setAnchorPoint(ccp(0.f, 0.f));
-        marker->setPosition(ccp(button->getContentSize().width + 1.f, 0.f));
+        marker->setAnchorPoint(ccp(0, 0));
+        marker->setPosition(ccp(button->getContentSize().width + 1, 0));
         marker->setScale(.5f);
         marker->setID("marker");
         button->addChild(marker);
@@ -436,7 +448,7 @@ class $modify(MyEditorUI, EditorUI) {
         EditorUI::selectObject(targetObj, true);
         if (EditorUI::getSelectedObjects()->count() > 1) {
             // this may happen if target object has linked objects
-            showDebugText("Multiple target objects\naren't supported yet");
+            showDebugText("Multiple target objects\naren't supported yet", 1.f);
             return;
         }
         // create and save copy of target object 
@@ -452,39 +464,39 @@ class $modify(MyEditorUI, EditorUI) {
         EditorUI::onDeleteSelected(nullptr);
 
         // clear undo-s ("duplicate" and "delete selected" create unnecessary undo objects)
-        for (int i = 0; i < 4; i++) {
+        for (unsigned i = 0; i < 4; i++) {
             levelLayer->m_undoObjects->removeLastObject();
         }
         // set back this color
-        for (int i = 0; i < m_fields->m_objectsSource->count(); i++) {
+        for (unsigned i = 0; i < m_fields->m_objectsSource->count(); i++) {
             auto obj = static_cast<GameObject*>(m_fields->m_objectsSource->objectAtIndex(i));
             obj->selectObject(ccc3(255, 0, 255));
         }
         
         EditorUI::selectObject(targetObj, true);
+        EditorUI::updateButtons();
         
-        short targetObjectID = targetObj->m_objectID;
-        short sourceObjectsCommonType = getObjectsCommonType(m_fields->m_objectsSource);
         // get configuration for given source and target objects
-        auto filteredByTargetObj = CONFIGURATION.find(targetObjectID);
-        if (filteredByTargetObj == CONFIGURATION.end()) {
+        auto forTargetObjType = CONFIGURATION.find(targetObj->m_objectID);
+        if (forTargetObjType == CONFIGURATION.end()) {
             // we don't have any options for given object (probably because target is not a trigger)
             log::debug("obj not found in map");
             // todo: common config (just copy groups from target to source)
             return;
         } 
         // we have some options for given target object 
-        auto filteredBySourceObjects = filteredByTargetObj->second.find(sourceObjectsCommonType);
-        if (filteredBySourceObjects == filteredByTargetObj->second.end()) {
-            filteredBySourceObjects = filteredByTargetObj->second.find(objTypes::any); // 
-            if (filteredBySourceObjects == filteredByTargetObj->second.end()) {
+        short sourceObjectsCommonType = getObjectsCommonType(m_fields->m_objectsSource);
+        auto forSourceObjType = forTargetObjType->second.find(sourceObjectsCommonType);
+        if (forSourceObjType == forTargetObjType->second.end()) {
+            forSourceObjType = forTargetObjType->second.find(srcObjType::any);
+            if (forSourceObjType == forTargetObjType->second.end()) {
                 //todo
                 log::debug("this combination is not supported");
                 return;
             }
         }
         // create upper menu
-        auto upperMenuConfig = filteredBySourceObjects->second;
+        auto upperMenuConfig = forSourceObjType->second.second;
         if (upperMenuConfig.size() == 0) {
             resetTool();
             return;
@@ -492,30 +504,41 @@ class $modify(MyEditorUI, EditorUI) {
         createUpperMenu(upperMenuConfig, true);
         auto upperMenu = m_fields->m_upperMenu;
         m_fields->m_drawingLayer->addChild(upperMenu);
-        upperMenu->setPosition(targetObj->getPosition() + ccp(5.f, 15.f));
+        upperMenu->setPosition(targetObj->getPosition() + ccp(5, 15));
 
-        // get lower menu config
+        m_fields->m_globalConfig.sourceFunc = forSourceObjType->second.first;
+
+        // get lower menu config (depends on function for source objects)
         std::vector<std::pair<std::string, int>> lowerMenuConfig;
-        auto newGroupPossible = isNewGroupPossible(m_fields->m_objectsSourceCopy);
-        if (newGroupPossible) {
-            int nextFree = levelLayer->getNextFreeGroupID(nullptr);
-            lowerMenuConfig.push_back({"next free(" + std::to_string(nextFree) + ")", nextFree});
-        }
-        auto commonGroups = getObjectsCommonGroups(m_fields->m_objectsSourceCopy);
-        for (int i = 0; i < commonGroups.size(); i++) {
-            lowerMenuConfig.push_back({"group " + std::to_string(commonGroups.at(i)), commonGroups.at(i)});
+        switch (m_fields->m_globalConfig.sourceFunc) {
+            case funcType::addGr:
+            case funcType::addGrSM: {
+                auto newGroupPossible = isNewGroupPossible(m_fields->m_objectsSourceCopy);
+                if (newGroupPossible) {
+                    int nextFree = levelLayer->getNextFreeGroupID(nullptr);
+                    lowerMenuConfig.push_back({std::format("next ({})", nextFree), nextFree});
+                    // lowerMenuConfig.push_back({"next free", nextFree});
+                }
+                auto commonGroups = getObjectsCommonGroups(m_fields->m_objectsSourceCopy);
+                for (unsigned i = 0; i < commonGroups.size(); i++) {
+                    lowerMenuConfig.push_back({std::format("group {}", commonGroups.at(i)), commonGroups.at(i)});
+                }
+                break;
+            }
+            default:
+                break;
         }
 
         // create lower menu
         if (lowerMenuConfig.size() == 0) {
-            showDebugText("Impossible assign common\ngroup for objects");
+            showDebugText("Impossible assign common\ngroup for objects", 1.f);
             resetTool();
             return;
         }
         createLowerMenu(lowerMenuConfig, true);
         auto lowerMenu = m_fields->m_lowerMenu;
         m_fields->m_drawingLayer->addChild(lowerMenu);
-        lowerMenu->setPosition(targetObj->getPosition() + ccp(5.f, -15.f));
+        lowerMenu->setPosition(targetObj->getPosition() + ccp(5, -15));
 
 
         m_fields->m_globalConfig.isFinished = true;
@@ -530,12 +553,12 @@ class $modify(MyEditorUI, EditorUI) {
         short group = m_fields->m_globalConfig.group;
         auto levelLayer = LevelEditorLayer::get();        
         // target object
-        int pos = targetStr.find("g");
+        size_t pos = targetStr.find("g");
         if (pos != std::string::npos) {
             targetStr.replace(pos, 1, std::to_string(group));
         }
         std::string targetObj = m_fields->m_objectTargetCopy->getSaveString(nullptr);
-        std::string modifiedTargetObject = targetObj + std::string(",") + targetStr;
+        std::string modifiedTargetObject = std::format("{},{}", targetObj, targetStr);
         auto objArray = levelLayer->createObjectsFromString(modifiedTargetObject, true, true); 
         if (objArray->count() == 0) {
             log::debug("modified target object wasn't successfully created from string");
@@ -561,11 +584,11 @@ class $modify(MyEditorUI, EditorUI) {
         EditorUI::onDeleteSelected(nullptr);
 
         // clear undo-s ("duplicate" and "delete selected" create unnecessary undo objects)
-        for (int i = 0; i < 4; i++) {
+        for (unsigned i = 0; i < 4; i++) {
             levelLayer->m_undoObjects->removeLastObject();
         }
 
-        for (int i = 0; i < m_fields->m_objectsSource->count(); i++) {
+        for (unsigned i = 0; i < m_fields->m_objectsSource->count(); i++) {
             auto obj = static_cast<GameObject*>(m_fields->m_objectsSource->objectAtIndex(i));
             obj->addToGroup(group);
             obj->selectObject(ccc3(255, 0, 255));
@@ -581,17 +604,17 @@ class $modify(MyEditorUI, EditorUI) {
     // ------------------------ utility ---------------------------
 
     short getObjectsCommonType(CCArray * objects) {
-        short type = objTypes::trig;
+        short type = srcObjType::trig;
         bool yes = true;
-        for (int i = 0; i < objects->count(); i++) {
+        for (unsigned i = 0; i < objects->count(); i++) {
             auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
-            if (!triggersIDs.contains(obj->m_objectID)) {
+            if (!triggerIDs.contains(obj->m_objectID)) {
                 yes = false;
                 break;
             }
         }
         if (yes) return type;
-        type = objTypes::obj;
+        type = srcObjType::obj;
         return type;
     }
 
@@ -604,12 +627,12 @@ class $modify(MyEditorUI, EditorUI) {
         std::set<short> commonGroups(firstObj->m_groups->begin(), firstObj->m_groups->end());
         commonGroups.erase(0);
 
-        for (int i = 1; i < objects->count(); i++) {
+        for (unsigned i = 1; i < objects->count(); i++) {
             auto groups = static_cast<GameObject*>(objects->objectAtIndex(i))->m_groups;
             if (!groups) return std::vector<short>();
 
             std::set<short> foundGroups;
-            for (int i = 0; i < groups->size(); i++) {
+            for (unsigned i = 0; i < groups->size(); i++) {
                 short group = groups->at(i);
                 if (group == 0) break;
                 if (commonGroups.find(group) != commonGroups.end()) {
@@ -625,7 +648,7 @@ class $modify(MyEditorUI, EditorUI) {
     }
 
     bool isNewGroupPossible(CCArray * objects) {
-        for (int i = 0; i < objects->count(); i++) {
+        for (unsigned i = 0; i < objects->count(); i++) {
             auto groups = static_cast<GameObject*>(objects->objectAtIndex(i))->m_groups;
             if (!groups) continue;
             if (groups->at(9) != 0) {  
@@ -688,10 +711,10 @@ class $modify(MyEditorUI, EditorUI) {
             m_fields->m_lineEnd = endObj->getPosition();
             updateLine(false);
             if(m_fields->m_upperMenu) {
-                m_fields->m_upperMenu->setPosition(endObj->getPosition() + ccp(5.f, 15.f));
+                m_fields->m_upperMenu->setPosition(endObj->getPosition() + ccp(5, 15));
             }
             if(m_fields->m_lowerMenu) {
-                m_fields->m_lowerMenu->setPosition(endObj->getPosition() + ccp(5.f, -15.f));
+                m_fields->m_lowerMenu->setPosition(endObj->getPosition() + ccp(5, -15));
             }
         }
     }
@@ -707,7 +730,7 @@ class $modify(MyEditorUI, EditorUI) {
         // reset source objects
         if (m_fields->m_objectsSource) {
             auto selectedNow = this->getSelectedObjects();
-            for (int i = 0; i < m_fields->m_objectsSource->count(); i++) {
+            for (unsigned i = 0; i < m_fields->m_objectsSource->count(); i++) {
                 auto obj = static_cast<GameObject*>(m_fields->m_objectsSource->objectAtIndex(i));
                 this->deselectObject(obj);
             }
@@ -732,9 +755,10 @@ class $modify(MyEditorUI, EditorUI) {
 
 // ------------------------------- keybinds -----------------------------------
 
-#ifdef GEODE_IS_WINDOWS
+#ifdef GEODE_IS_WINDOWS 
+
 $execute {
-    using namespace keybinds;  // todo -fix
+    using namespace keybinds;
 
     BindManager::get()->registerBindable({
         "twt-pan-in-the-editor"_spr,
@@ -751,4 +775,5 @@ $execute {
         "Triggers Wiring Tool"
     });
 }
+
 #endif

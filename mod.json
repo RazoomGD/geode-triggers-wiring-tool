@@ -20,7 +20,8 @@
 		{
             "id": "geode.custom-keybinds",
             "version": ">=1.7.1",
-            "importance": "required"
+            "importance": "required",
+			"platforms": ["win"]
         }
 	],
 	"settings": {
@@ -30,6 +31,19 @@
 			"name": "Use 'Ctrl' key as tool modifier",
 			"description": "When enabled, you can hold 'Ctrl' to use the tool",
 			"platforms": ["win"]
+		},
+		"hide-info-button" : {
+			"type": "bool",
+			"default": false,
+			"name": "Hide info button",
+			"description": "Hide that small blue info button at the lower left corner of the large button in editor"
+		}
+	},
+	"resources": {
+		"spritesheets": {
+			"TWTSpritesheet": [
+				"resources/*.png"
+			]
 		}
 	}
 }

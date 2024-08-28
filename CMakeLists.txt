@@ -5,7 +5,7 @@ set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64")
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(SKIP_BUILDING_CODEGEN OFF)
 
-project(editorThing VERSION 1.0.0)
+project(triggersWiringTool VERSION 1.0.0)
 
 add_library(${PROJECT_NAME} SHARED
     src/main.cpp
