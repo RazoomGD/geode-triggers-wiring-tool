@@ -1,5 +1,6 @@
 #include <Geode/Geode.hpp>
 #include <Geode/modify/EditorUI.hpp>
+#include <utility>
 
 #ifdef GEODE_IS_WINDOWS 
 #include <geode.custom-keybinds/include/Keybinds.hpp>
@@ -23,6 +24,7 @@ class $modify(MyEditorUI, EditorUI) {
         CCDrawNode* m_drawingLayer = nullptr;
         CCPoint m_lineStart;  // both are editor coordinates
         CCPoint m_lineEnd;
+        std::pair<CCPoint, CCPoint> m_sourceRectangle;
         Ref<CCArray> m_objectsSource = nullptr;  // array of selected objects
         Ref<GameObject> m_objectTarget = nullptr;  // end object
         Ref<CCArray> m_objectsSourceCopy = nullptr;
@@ -56,6 +58,20 @@ class $modify(MyEditorUI, EditorUI) {
         drawingLayer->setZOrder(3000);
         parent->updateChildIndexes();
         m_fields->m_drawingLayer = drawingLayer;
+
+        // I have no idea why, but sometimes something 
+        // happens and the line drawing is not working (next code tests it)
+        // Re-initializing drawing layer usually fixes it
+        bool working = m_fields->m_drawingLayer->drawSegment(
+            ccp(0, 0), ccp(0, 1), .1f, ccc4f(1, 1, 1, 1));
+        if (!working) {
+            log::debug("reinit drawing layer");
+            static short preventInfiniteRecursion = 10;
+            if (preventInfiniteRecursion-- < 0) return;
+            m_fields->m_drawingLayer->removeFromParent();
+            m_fields->m_drawingLayer = nullptr;
+            initDrawingLayer(); // reinit
+        }
     }
 
     void initDebugLabel() {
@@ -182,8 +198,8 @@ class $modify(MyEditorUI, EditorUI) {
             if (m_fields->m_interfaceIsVisible) {
                 resetTool();
             }
-            auto isSelected = handleTouchStart(touch);
-            if (isSelected) {
+            auto startedUsingTool = handleTouchStart(touch);
+            if (startedUsingTool) {
                 m_fields->m_interfaceIsVisible = true;
                 return true;
             } else {
@@ -231,7 +247,7 @@ class $modify(MyEditorUI, EditorUI) {
             for (unsigned i = 0; i < preSelected->count(); i++) {
                 auto obj = static_cast<GameObject*>(preSelected->objectAtIndex(i));
                 auto objBox = obj->boundingBox();
-                auto click = m_fields->m_lineStart;
+                auto click = m_fields->m_lineEnd;
                 if (  // check if we've started line from selected object
                     click.x >= objBox.getMinX() && click.x <= objBox.getMaxX() &&
                     click.y >= objBox.getMinY() && click.y <= objBox.getMaxY()) {
@@ -245,21 +261,12 @@ class $modify(MyEditorUI, EditorUI) {
         if (useSelectedFlag) {
             sourceObjects = preSelected;
         } else {
-            auto startObj = LevelEditorLayer::get()->objectAtPosition(m_fields->m_lineStart);
+            auto startObj = LevelEditorLayer::get()->objectAtPosition(m_fields->m_lineEnd);
             if (startObj) {
                 EditorUI::selectObject(startObj, false);
                 sourceObjects = EditorUI::getSelectedObjects();
             } else if (preSelected->count()) {
                 sourceObjects = preSelected;
-                // get the most average object
-                double sumX = 0;
-                double sumY = 0;
-                for (unsigned i = 0; i < preSelected->count(); i++) {
-                    auto obj = static_cast<GameObject*>(preSelected->objectAtIndex(i));
-                    sumX += obj->getPositionX();
-                    sumY += obj->getPositionY();
-                }
-                m_fields->m_lineStart = ccp(sumX / preSelected->count(), sumY / preSelected->count());
             }
         }
 
@@ -271,17 +278,36 @@ class $modify(MyEditorUI, EditorUI) {
             }
             m_fields->m_objectsSource = sourceObjects;
             showDebugText(std::format("Selected objects: {}", sourceObjects->count()));
-        } else {
-            showDebugText("No objects selected");
-            return false;
+            // get source rectangle
+            int leftX = INT_MAX; 
+            int topY = INT_MIN;
+            int rightX = INT_MIN;
+            int bottomY = INT_MAX;
+            for (unsigned i = 0; i < sourceObjects->count(); i++) {
+                auto obj = static_cast<GameObject*>(sourceObjects->objectAtIndex(i));
+                auto bound = obj->boundingBox();
+                if (bound.getMaxX() > rightX) rightX = bound.getMaxX();
+                if (bound.getMinX() < leftX) leftX = bound.getMinX();
+                if (bound.getMaxY() > topY) topY = bound.getMaxY();
+                if (bound.getMinY() < bottomY) bottomY = bound.getMinY();
+            }
+            auto topLeft = ccp(leftX, topY);
+            auto bottomRight = ccp(rightX, bottomY);
+            m_fields->m_sourceRectangle.first = topLeft - ccp(3, -3);
+            m_fields->m_sourceRectangle.second = bottomRight + ccp(3, -3);
+
+            m_fields->m_lineStart = calculateLineStartOnRectangle(m_fields->m_lineEnd, m_fields->m_sourceRectangle);
+            updateLineAndRect(false);
+            return true;
         }
-        updateLine(false);
-        return true;
+        showDebugText("No objects selected");
+        return false;
     }
 
     void handleTouchMiddle(const CCTouch * const touch) {
         m_fields->m_lineEnd = screenToEditorLayerPosition(touch->getLocationInView());
-        updateLine(false);
+        m_fields->m_lineStart = calculateLineStartOnRectangle(m_fields->m_lineEnd, m_fields->m_sourceRectangle);
+        updateLineAndRect(false);
     }
 
     void handleTouchEnd(bool select, bool showDebug) {
@@ -289,7 +315,8 @@ class $modify(MyEditorUI, EditorUI) {
             auto endObj = LevelEditorLayer::get()->objectAtPosition(m_fields->m_lineEnd);
             if (select && endObj) {
                 m_fields->m_lineEnd = endObj->getPosition();
-                updateLine(false);
+                m_fields->m_lineStart = calculateLineStartOnRectangle(m_fields->m_lineEnd, m_fields->m_sourceRectangle);
+                updateLineAndRect(false);
                 m_fields->m_objectTarget = endObj;
                 handleTargetObject();
             } else {
@@ -659,6 +686,22 @@ class $modify(MyEditorUI, EditorUI) {
         return true;
     }
 
+    CCPoint calculateLineStartOnRectangle(CCPoint endPoint, std::pair<CCPoint, CCPoint> box) {
+        auto lineStartY = endPoint.y;
+        auto lineStartX = endPoint.x;
+        short isPointInside = 0;
+        if (lineStartX > box.second.x) lineStartX = box.second.x;
+        else if (lineStartX < box.first.x) lineStartX = box.first.x;
+        else isPointInside++;
+        if (lineStartY > box.first.y) lineStartY = box.first.y;
+        else if (lineStartY < box.second.y) lineStartY = box.second.y;
+        else isPointInside++;
+        if (isPointInside == 2) {
+            return (box.first + box.second) / 2;
+        }
+        return ccp(lineStartX, lineStartY);
+    }
+
     // -------------------- Converters for coordinates -------------------------
 
     CCPoint screenToEditorLayerPosition(CCPoint screenPoint) {
@@ -669,31 +712,21 @@ class $modify(MyEditorUI, EditorUI) {
 
     // ------------------- updaters for interface -------------------------
 
-    void updateLine(bool finishLine) {
+    void updateLineAndRect(bool finishLine) {
         if (!m_fields->m_drawingLayer) {
             initDrawingLayer();
         }
         m_fields->m_drawingLayer->clear();
         if (!finishLine) {
-            bool done = m_fields->m_drawingLayer->drawSegment(
+            m_fields->m_drawingLayer->drawSegment(
                 m_fields->m_lineStart,
                 m_fields->m_lineEnd, 1.f,
                 ccc4f(128, 128, 128, 155));
-            
-            if (!done) {
-                // I have no idea why, but sometimes something 
-                // happens and the line is not drawn
-                // Re-initializing drawing layer (just once) usually fixes it
-                static short preventInfiniteRecursion = 10;
-                if (preventInfiniteRecursion < 0) {
-                    return;
-                }
-                preventInfiniteRecursion--;
-                m_fields->m_drawingLayer->removeFromParent();
-                m_fields->m_drawingLayer = nullptr;
-                initDrawingLayer(); // reinit
-                updateLine(finishLine);
-            }
+            m_fields->m_drawingLayer->drawRect(
+                m_fields->m_sourceRectangle.first,
+                m_fields->m_sourceRectangle.second,
+                ccc4f(0, 0, 0, 0), 1.f, 
+                ccc4f(128, 128, 128, 155));
         }
     }
 
@@ -709,7 +742,8 @@ class $modify(MyEditorUI, EditorUI) {
             endObjPosX = endObj->getPositionX();
             endObjPosY = endObj->getPositionY();
             m_fields->m_lineEnd = endObj->getPosition();
-            updateLine(false);
+            m_fields->m_lineStart = calculateLineStartOnRectangle(m_fields->m_lineEnd, m_fields->m_sourceRectangle);
+            updateLineAndRect(false);
             if(m_fields->m_upperMenu) {
                 m_fields->m_upperMenu->setPosition(endObj->getPosition() + ccp(5, 15));
             }
@@ -737,7 +771,7 @@ class $modify(MyEditorUI, EditorUI) {
             this->selectObjects(selectedNow, true);
         }
         // reset line
-        updateLine(true);
+        updateLineAndRect(true);
         // reset fields
         m_fields->m_upperMenu = nullptr;
         m_fields->m_lowerMenu = nullptr;
