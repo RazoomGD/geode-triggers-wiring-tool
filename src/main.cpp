@@ -1,6 +1,7 @@
 #include <Geode/Geode.hpp>
 #include <Geode/modify/EditorUI.hpp>
 #include <utility>
+#include <cstring>
 
 #ifdef GEODE_IS_WINDOWS 
 #include <geode.custom-keybinds/include/Keybinds.hpp>
@@ -13,7 +14,7 @@ using namespace geode::prelude;
 class $modify(MyEditorUI, EditorUI) {
     struct ToolConfig {
         std::string targetStr;
-        short sourceFunc;
+        sourceFuncType sourceFunc;
         short group;
         bool isFinished = false;
     };
@@ -28,7 +29,7 @@ class $modify(MyEditorUI, EditorUI) {
         Ref<CCArray> m_objectsSource = nullptr;  // array of selected objects
         Ref<GameObject> m_objectTarget = nullptr;  // end object
         Ref<CCArray> m_objectsSourceCopy = nullptr;
-        Ref<GameObject> m_objectTargetCopy = nullptr;
+        std::string m_objectTargetCopy;
         Ref<CCMenu> m_upperMenu = nullptr;
         Ref<CCMenu> m_lowerMenu = nullptr;
         bool m_ctrlModifierEnabled = false;
@@ -38,13 +39,24 @@ class $modify(MyEditorUI, EditorUI) {
         ToolConfig m_globalConfig;
     };
 
+    void myCopyGroups(GameObject* from, GameObject* to) {
+        // groups
+        if (!to->m_groups) to->addToGroup(1);
+        if (from->m_groups) {
+            std::memcpy(to->m_groups, from->m_groups, sizeof(short) * 10);
+        } else {
+            to->m_groups->fill(0);
+        }
+        to->m_groupCount = from->m_groupCount;
+    }
+
     bool toolIsActivated() {
         #ifdef GEODE_IS_WINDOWS 
             return ((m_fields->m_ctrlModifierEnabled && 
                 CCKeyboardDispatcher::get()->getControlKeyPressed()) || 
                 m_fields->m_buttonIsActivated) && !m_fields->m_panEditor;
         #else
-            return m_fields->m_buttonIsActivate\d;
+            return m_fields->m_buttonIsActivated;
         #endif
     }
 
@@ -64,13 +76,15 @@ class $modify(MyEditorUI, EditorUI) {
         // Re-initializing drawing layer usually fixes it
         bool working = m_fields->m_drawingLayer->drawSegment(
             ccp(0, 0), ccp(0, 1), .1f, ccc4f(1, 1, 1, 1));
+        static short antiInfiniteRecursion = 10;
         if (!working) {
             log::debug("reinit drawing layer");
-            static short preventInfiniteRecursion = 10;
-            if (preventInfiniteRecursion-- < 0) return;
+            if (antiInfiniteRecursion-- < 0) return;
             m_fields->m_drawingLayer->removeFromParent();
             m_fields->m_drawingLayer = nullptr;
             initDrawingLayer(); // reinit
+        } else {
+            antiInfiniteRecursion = 10;
         }
     }
 
@@ -85,7 +99,7 @@ class $modify(MyEditorUI, EditorUI) {
         debugLabel->setPosition(buttonCoordsOnEditorUI - 
             ccp(0, btn->getContentSize().height / 2 + 10));
         debugLabel->setOpacity(0);
-        debugLabel->setID("debug-label");
+        debugLabel->setID("twt-debug-label");
 
         this->addChild(debugLabel, 999);
         m_fields->m_debugLabel = debugLabel;
@@ -115,7 +129,6 @@ class $modify(MyEditorUI, EditorUI) {
         undoMenu->addChild(twtMenu);
         undoMenu->updateLayout();
     }
-
 
     void setKeybinds() {
         #ifdef GEODE_IS_WINDOWS 
@@ -149,8 +162,8 @@ class $modify(MyEditorUI, EditorUI) {
         label->setString(text.c_str());
         label->setOpacity(255);
         label->stopAllActions();
-        label->runAction(
-            CCSequence::create(CCDelayTime::create(timeSec), CCFadeOut::create(timeSec), nullptr));
+        label->runAction(CCSequence::create(
+            CCDelayTime::create(timeSec), CCFadeOut::create(timeSec), nullptr));
     }
 
     void onMyButton(CCObject*) {
@@ -168,14 +181,9 @@ class $modify(MyEditorUI, EditorUI) {
     }
 
     void onInfoButton(CCObject*) {
-        #ifdef GEODE_IS_WINDOWS
-            auto text = "This is <cp>windows</c>!";
-        #else
-            auto text = "This is <cp>not win</c>!";
-        #endif
         FLAlertLayer::create(
             "Color Example",
-            text,
+            "text",
             "OK"
         )->show();
     }
@@ -328,17 +336,16 @@ class $modify(MyEditorUI, EditorUI) {
         }
     }
     
-    // ------------------------------ upper menu logic -----------------------------------
+    // -------------------------- upper menu logic ------------------------------
 
     struct UpperMenuButtonParameters : public CCObject {
-        //        button-text  trig-modifier  
-        std::pair<std::string, std::string> m_config;
-        UpperMenuButtonParameters(std::pair<std::string, std::string> const& config) : m_config(config) {
+        Variant m_config;
+        UpperMenuButtonParameters(Variant const& config) : m_config(config) {
             this->autorelease();
         }
     };
 
-    void createUpperMenu(const std::vector<std::pair<std::string, std::string>>& configuration, bool selectFirst) {
+    void createUpperMenu(const std::vector<Variant>& configuration, bool selectFirst) {
         // remove old menu
         if (m_fields->m_upperMenu) m_fields->m_upperMenu->removeFromParent();
         // create new menu
@@ -355,7 +362,7 @@ class $modify(MyEditorUI, EditorUI) {
         // add buttons
         for (unsigned i = 0; i < configuration.size(); i++) {
             auto btnNode = CCNode::create();
-            auto label = CCLabelBMFont::create(configuration[i].first.c_str(), "bigFont.fnt");
+            auto label = CCLabelBMFont::create(configuration[i].m_name.c_str(), "bigFont.fnt");
             label->setScale(0.5f);
             label->setAnchorPoint(ccp(0, 0));
             btnNode->addChild(label);
@@ -391,7 +398,7 @@ class $modify(MyEditorUI, EditorUI) {
         button->addChild(marker);
         // update m_globalConfig
         auto config = static_cast<UpperMenuButtonParameters*>(button->getUserObject())->m_config;
-        m_fields->m_globalConfig.targetStr = config.second;
+        m_fields->m_globalConfig.targetStr = config.m_triggerConfigString;
 
         applyToolConfig();
     }
@@ -469,7 +476,10 @@ class $modify(MyEditorUI, EditorUI) {
 
     // --------------------------- tool main logic -------------------------------
 
+    // this is called only once before each tool use 
+    // and meant to set initial configuration and prepare everything
     void handleTargetObject() {
+        if (!m_fields->m_objectTarget || !m_fields->m_objectsSource) return;
         auto levelLayer = LevelEditorLayer::get();
         auto targetObj = m_fields->m_objectTarget;
         EditorUI::selectObject(targetObj, true);
@@ -479,30 +489,17 @@ class $modify(MyEditorUI, EditorUI) {
             return;
         }
         // create and save copy of target object 
-        EditorUI::onDuplicate(nullptr);
-        m_fields->m_objectTargetCopy = static_cast<GameObject*>(
-            EditorUI::getSelectedObjects()->objectAtIndex(0));
-        EditorUI::onDeleteSelected(nullptr);
-
+        m_fields->m_objectTargetCopy = targetObj->getSaveString(nullptr);
+        
         // create and save copy of source objects
-        EditorUI::selectObjects(m_fields->m_objectsSource, true);
-        EditorUI::onDuplicate(nullptr);
-        m_fields->m_objectsSourceCopy = EditorUI::getSelectedObjects();
-        EditorUI::onDeleteSelected(nullptr);
-
-        // clear undo-s ("duplicate" and "delete selected" create unnecessary undo objects)
-        for (unsigned i = 0; i < 4; i++) {
-            levelLayer->m_undoObjects->removeLastObject();
-        }
-        // set back this color
+        m_fields->m_objectsSourceCopy = CCArray::create();
         for (unsigned i = 0; i < m_fields->m_objectsSource->count(); i++) {
             auto obj = static_cast<GameObject*>(m_fields->m_objectsSource->objectAtIndex(i));
-            obj->selectObject(ccc3(255, 0, 255));
+            auto objCopy = GameObject::createWithKey(1);
+            myCopyGroups(obj, objCopy);
+            m_fields->m_objectsSourceCopy->addObject(objCopy);
         }
-        
-        EditorUI::selectObject(targetObj, true);
-        EditorUI::updateButtons();
-        
+
         // get configuration for given source and target objects
         auto forTargetObjType = CONFIGURATION.find(targetObj->m_objectID);
         if (forTargetObjType == CONFIGURATION.end()) {
@@ -511,9 +508,9 @@ class $modify(MyEditorUI, EditorUI) {
             // todo: common config (just copy groups from target to source)
             return;
         } 
-        // we have some options for given target object 
-        short sourceObjectsCommonType = getObjectsCommonType(m_fields->m_objectsSource);
-        auto forSourceObjType = forTargetObjType->second.find(sourceObjectsCommonType);
+        // (else) we have some options for given target object 
+        auto forSourceObjType = forTargetObjType->second.find(
+            getObjectsCommonType(m_fields->m_objectsSource));
         if (forSourceObjType == forTargetObjType->second.end()) {
             forSourceObjType = forTargetObjType->second.find(srcObjType::any);
             if (forSourceObjType == forTargetObjType->second.end()) {
@@ -522,51 +519,53 @@ class $modify(MyEditorUI, EditorUI) {
                 return;
             }
         }
-        // create upper menu
-        auto upperMenuConfig = forSourceObjType->second.second;
-        if (upperMenuConfig.size() == 0) {
-            resetTool();
-            return;
-        }
-        createUpperMenu(upperMenuConfig, true);
-        auto upperMenu = m_fields->m_upperMenu;
-        m_fields->m_drawingLayer->addChild(upperMenu);
-        upperMenu->setPosition(targetObj->getPosition() + ccp(5, 15));
+        m_fields->m_globalConfig.sourceFunc = forSourceObjType->second.m_srcFuncType;
 
-        m_fields->m_globalConfig.sourceFunc = forSourceObjType->second.first;
-
-        // get lower menu config (depends on function for source objects)
-        std::vector<std::pair<std::string, int>> lowerMenuConfig;
-        switch (m_fields->m_globalConfig.sourceFunc) {
-            case funcType::addGr:
-            case funcType::addGrSM: {
-                auto newGroupPossible = isNewGroupPossible(m_fields->m_objectsSourceCopy);
-                if (newGroupPossible) {
-                    int nextFree = levelLayer->getNextFreeGroupID(nullptr);
-                    lowerMenuConfig.push_back({std::format("next ({})", nextFree), nextFree});
-                    // lowerMenuConfig.push_back({"next free", nextFree});
-                }
-                auto commonGroups = getObjectsCommonGroups(m_fields->m_objectsSourceCopy);
-                for (unsigned i = 0; i < commonGroups.size(); i++) {
-                    lowerMenuConfig.push_back({std::format("group {}", commonGroups.at(i)), commonGroups.at(i)});
-                }
-                break;
+        { // create upper menu
+            auto upperMenuConfig = forSourceObjType->second.m_variants;
+            if (upperMenuConfig.size() == 0) {
+                resetTool();
+                return;
             }
-            default:
-                break;
+            createUpperMenu(upperMenuConfig, true);
+            auto upperMenu = m_fields->m_upperMenu;
+            m_fields->m_drawingLayer->addChild(upperMenu);
+            upperMenu->setPosition(targetObj->getPosition() + ccp(5, 15));
         }
 
-        // create lower menu
-        if (lowerMenuConfig.size() == 0) {
-            showDebugText("Impossible assign common\ngroup for objects", 1.f);
-            resetTool();
-            return;
+        std::vector<std::pair<std::string, int>> lowerMenuConfig;
+        { // get lower menu config (depends on function for source objects)
+            switch (m_fields->m_globalConfig.sourceFunc) {
+                case sourceFuncType::addGr:
+                case sourceFuncType::addGrSM: {
+                    auto newGroupPossible = isNewGroupPossible(m_fields->m_objectsSourceCopy);
+                    if (newGroupPossible) {
+                        int nextFree = levelLayer->getNextFreeGroupID(nullptr);
+                        lowerMenuConfig.push_back({std::format("next ({})", nextFree), nextFree});
+                        // lowerMenuConfig.push_back({"next free", nextFree});
+                    }
+                    auto commonGroups = getObjectsCommonGroups(m_fields->m_objectsSourceCopy);
+                    for (unsigned i = 0; i < commonGroups.size(); i++) {
+                        lowerMenuConfig.push_back({std::format("group {}", commonGroups.at(i)), commonGroups.at(i)});
+                    }
+                    lowerMenuConfig.push_back({"none", -1});
+                    break;
+                }
+                default: break;
+            }
         }
-        createLowerMenu(lowerMenuConfig, true);
-        auto lowerMenu = m_fields->m_lowerMenu;
-        m_fields->m_drawingLayer->addChild(lowerMenu);
-        lowerMenu->setPosition(targetObj->getPosition() + ccp(5, -15));
 
+        { // create lower menu
+            if (lowerMenuConfig.size() == 0) {
+                showDebugText("Impossible assign common\ngroup for objects", 1);
+                resetTool();
+                return;
+            }
+            createLowerMenu(lowerMenuConfig, true);
+            auto lowerMenu = m_fields->m_lowerMenu;
+            m_fields->m_drawingLayer->addChild(lowerMenu);
+            lowerMenu->setPosition(targetObj->getPosition() + ccp(5, -15));
+        }
 
         m_fields->m_globalConfig.isFinished = true;
         applyToolConfig();
@@ -578,14 +577,39 @@ class $modify(MyEditorUI, EditorUI) {
         auto targetStr = m_fields->m_globalConfig.targetStr;
         auto sourceFunc = m_fields->m_globalConfig.sourceFunc;
         short group = m_fields->m_globalConfig.group;
-        auto levelLayer = LevelEditorLayer::get();        
-        // target object
-        size_t pos = targetStr.find("g");
-        if (pos != std::string::npos) {
-            targetStr.replace(pos, 1, std::to_string(group));
+        bool resetToDefault = group == -1;
+        auto levelLayer = LevelEditorLayer::get();
+        
+        // source objects
+        for (unsigned i = 0; i < m_fields->m_objectsSource->count(); i++) {
+            auto obj = static_cast<GameObject*>(m_fields->m_objectsSource->objectAtIndex(i));
+            auto objDefaultAttributes = static_cast<GameObject*>(m_fields->m_objectsSourceCopy->objectAtIndex(i));
+            myCopyGroups(objDefaultAttributes, obj); // restore initial groups
         }
-        std::string targetObj = m_fields->m_objectTargetCopy->getSaveString(nullptr);
-        std::string modifiedTargetObject = std::format("{},{}", targetObj, targetStr);
+
+        if (!resetToDefault) switch (m_fields->m_globalConfig.sourceFunc) {
+            case sourceFuncType::addGr: {
+                addToGroup(group, m_fields->m_objectsSource);
+                break;
+            }
+            case sourceFuncType::addGrSM: {
+                addToGroupSM(group, m_fields->m_objectsSource);
+                break;
+            }
+            default: break;
+        }
+
+        // target object
+        std::string modifiedTargetObject;
+        if (!resetToDefault) {
+            size_t pos = targetStr.find("g"); // group
+            if (pos != std::string::npos) {
+                targetStr.replace(pos, 1, std::to_string(group));
+            }
+            modifiedTargetObject = std::format("{},{}", m_fields->m_objectTargetCopy, targetStr);
+        } else {
+            modifiedTargetObject = m_fields->m_objectTargetCopy;
+        }
         auto objArray = levelLayer->createObjectsFromString(modifiedTargetObject, true, true); 
         if (objArray->count() == 0) {
             log::debug("modified target object wasn't successfully created from string");
@@ -597,41 +621,17 @@ class $modify(MyEditorUI, EditorUI) {
         EditorUI::selectObject(m_fields->m_objectTarget, true);
         EditorUI::onDeleteSelected(nullptr);
         m_fields->m_objectTarget = newObj;
+
+        levelLayer->m_undoObjects->removeLastObject();
         
-        // source objects
-        EditorUI::selectObjects(m_fields->m_objectsSource, true);
-        EditorUI::onDeleteSelected(nullptr);
-        levelLayer->m_undoObjects->addObject(UndoObject::createWithArray(
-            m_fields->m_objectsSourceCopy, UndoCommand::DeleteMulti));
-        EditorUI::undoLastAction(nullptr);
-        EditorUI::selectObjects(m_fields->m_objectsSourceCopy, true);
-        m_fields->m_objectsSource = m_fields->m_objectsSourceCopy;   
-        EditorUI::onDuplicate(nullptr);
-        m_fields->m_objectsSourceCopy = EditorUI::getSelectedObjects();
-        EditorUI::onDeleteSelected(nullptr);
-
-        // clear undo-s ("duplicate" and "delete selected" create unnecessary undo objects)
-        for (unsigned i = 0; i < 4; i++) {
-            levelLayer->m_undoObjects->removeLastObject();
-        }
-
-        for (unsigned i = 0; i < m_fields->m_objectsSource->count(); i++) {
-            auto obj = static_cast<GameObject*>(m_fields->m_objectsSource->objectAtIndex(i));
-            obj->addToGroup(group);
-            obj->selectObject(ccc3(255, 0, 255));
-            //todo: source function
-            
-            
-        }
-
         EditorUI::selectObject(newObj, true);
         EditorUI::updateButtons();
     }
 
     // ------------------------ utility ---------------------------
 
-    short getObjectsCommonType(CCArray * objects) {
-        short type = srcObjType::trig;
+    srcObjType getObjectsCommonType(CCArray * objects) {
+        auto type = srcObjType::trig;
         bool yes = true;
         for (unsigned i = 0; i < objects->count(); i++) {
             auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
@@ -640,7 +640,7 @@ class $modify(MyEditorUI, EditorUI) {
                 break;
             }
         }
-        if (yes) return type;
+        if (yes) return type; 
         type = srcObjType::obj;
         return type;
     }
@@ -681,11 +681,26 @@ class $modify(MyEditorUI, EditorUI) {
             if (groups->at(9) != 0) {  
                 return false;
             }
-
         }
         return true;
     }
 
+    void addToGroup(int group, CCArray * objects) {
+        for (unsigned i = 0; i < objects->count(); i++) {
+            auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
+            obj->addToGroup(group);
+        }
+    }
+
+    void addToGroupSM(int group, CCArray * objects) {
+        for (unsigned i = 0; i < objects->count(); i++) {
+            auto obj = static_cast<EffectGameObject*>(objects->objectAtIndex(i));
+            obj->addToGroup(group);
+            obj->m_isSpawnTriggered = true;
+            obj->m_isMultiTriggered = true;
+        }
+    }
+    
     CCPoint calculateLineStartOnRectangle(CCPoint endPoint, std::pair<CCPoint, CCPoint> box) {
         auto lineStartY = endPoint.y;
         auto lineStartX = endPoint.x;
@@ -712,12 +727,12 @@ class $modify(MyEditorUI, EditorUI) {
 
     // ------------------- updaters for interface -------------------------
 
-    void updateLineAndRect(bool finishLine) {
+    void updateLineAndRect(bool clear) {
         if (!m_fields->m_drawingLayer) {
             initDrawingLayer();
         }
         m_fields->m_drawingLayer->clear();
-        if (!finishLine) {
+        if (!clear) {
             m_fields->m_drawingLayer->drawSegment(
                 m_fields->m_lineStart,
                 m_fields->m_lineEnd, 1.f,
@@ -763,12 +778,12 @@ class $modify(MyEditorUI, EditorUI) {
         }
         // reset source objects
         if (m_fields->m_objectsSource) {
-            auto selectedNow = this->getSelectedObjects();
+            auto selectedNow = EditorUI::getSelectedObjects();
             for (unsigned i = 0; i < m_fields->m_objectsSource->count(); i++) {
                 auto obj = static_cast<GameObject*>(m_fields->m_objectsSource->objectAtIndex(i));
-                this->deselectObject(obj);
+                EditorUI::deselectObject(obj);
             }
-            this->selectObjects(selectedNow, true);
+            EditorUI::selectObjects(selectedNow, true);
         }
         // reset line
         updateLineAndRect(true);
@@ -778,7 +793,7 @@ class $modify(MyEditorUI, EditorUI) {
         m_fields->m_objectsSource = nullptr;
         m_fields->m_objectTarget = nullptr;
         m_fields->m_objectsSourceCopy = nullptr;
-        m_fields->m_objectTargetCopy = nullptr;
+        m_fields->m_objectTargetCopy = "";
         m_fields->m_interfaceIsVisible = false;
         m_fields->m_globalConfig.isFinished = false;
 
