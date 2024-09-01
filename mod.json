@@ -37,6 +37,12 @@
 			"default": false,
 			"name": "Hide info button",
 			"description": "Hide that small blue info button at the lower left corner of the large button in editor"
+		},
+		"preview-color" : {
+			"type": "bool",
+			"default": true,
+			"name": "Preview color",
+			"description": "This setting, turns off default <cp>pink highlight</c> for selected objects, while using the tool on the <cy>Color trigger</c> or <cy>Pulse trigger</c>. \n(this allows you to preview the actual objects color)"
 		}
 	},
 	"resources": {

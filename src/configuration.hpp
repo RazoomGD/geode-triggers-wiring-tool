@@ -15,6 +15,7 @@ enum srcObjType {
 enum sourceFuncType {
     addGr,    // just add to the group
     addGrSM,  // add group + set spawn trigger & multi trigger
+    color,    // does nothing to source objects
 };
 
 // Triggers (basically every object you are able to set as spawn trigger & multi trigger)
@@ -28,13 +29,32 @@ const std::set<objId> triggerIDs = {
     2912, 2911, 2910, 2909, 2922, 2923, 2924, 22, 1915, 58
 };
 
+const std::map<int, std::string> colorIdName = {
+    {1005, "Player-1"},
+    {1006, "Player-2"},
+    {1000, "BG"},
+    {1001, "G-1"},
+    {1013, "MG-1"},
+    {1007, "LBG"},
+    {1009, "G-2"},
+    {1014, "MG-2"},
+    {1004, "Obj"},
+    {1002, "Line"},
+    {1003, "3d-line"},
+    {1012, "Lighter"},
+    {1010, "Black"},
+    {1011, "White"},
+};
+
 // Special objects (objects we process differently from triggers)
 
+/*
 
+*/
 // Common objects are all the remaining ids
 
 const struct Condition {
-    std::string m_condition; // "<key>,<value>"
+    std::pair<std::string, std::string> m_condition; // key, value (value "" == any)
     std::string m_yes;
     std::string m_no;
 };
@@ -51,15 +71,22 @@ const struct TargetOption {
 };
 
 const std::map<objId, std::map<srcObjType, TargetOption>> CONFIGURATION = {
+    {899, { // color trigger
+        {srcObjType::any,  {sourceFuncType::color, {{"Color", "23,g"}}}},
+    }},
     {901, { // move trigger
-        {srcObjType::any,  {sourceFuncType::addGr, {{"Target", "51,g"}, {"TargetPos", "100,1,394,0,71,g"}, {"Center", "100,1,394,0,395,g"}}}},
+        {srcObjType::any,  {sourceFuncType::addGr, {{"Target", "51,g"}, 
+                                                    {"TargetPos", "100,1,394,0,71,g", {{{"394", "1"}, "100,0,394,1"}}}, 
+                                                    {"Center", "100,1,394,0,395,g", {{{"394", "1"}, "100,0,394,1"}}},
+                                                    }}},
     }},
 };
 
 
 /*
 
-
+1,899,2,345,3,15,36,1,7,255,8,255,9,255,10,0.5,35,1,23,1000;
+1,899,2,345,3,15,36,1,7,255,8,255,9,255,10,0.5,35,1,23,1013;
 
 
 

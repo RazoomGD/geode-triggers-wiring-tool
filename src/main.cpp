@@ -1,9 +1,11 @@
 #include <Geode/Geode.hpp>
 #include <Geode/modify/EditorUI.hpp>
 #include <utility>
+#include <sstream>
+#include <optional>
 #include <cstring>
 
-#ifdef GEODE_IS_WINDOWS 
+#ifdef GEODE_IS_WINDOWS
 #include <geode.custom-keybinds/include/Keybinds.hpp>
 #endif
 
@@ -13,10 +15,11 @@ using namespace geode::prelude;
 
 class $modify(MyEditorUI, EditorUI) {
     struct ToolConfig {
-        std::string targetStr;
-        sourceFuncType sourceFunc;
-        short group;
-        bool isFinished = false;
+        // std::string targetStr;
+        Variant m_targetConfig;
+        sourceFuncType m_sourceFunc;
+        short m_group;
+        bool m_isFinished = false;
     };
 
     struct Fields {
@@ -29,7 +32,8 @@ class $modify(MyEditorUI, EditorUI) {
         Ref<CCArray> m_objectsSource = nullptr;  // array of selected objects
         Ref<GameObject> m_objectTarget = nullptr;  // end object
         Ref<CCArray> m_objectsSourceCopy = nullptr;
-        std::string m_objectTargetCopy;
+        std::string m_objectTargetInitial;
+        std::string m_objectTargetLastUse;
         Ref<CCMenu> m_upperMenu = nullptr;
         Ref<CCMenu> m_lowerMenu = nullptr;
         bool m_ctrlModifierEnabled = false;
@@ -38,17 +42,6 @@ class $modify(MyEditorUI, EditorUI) {
         bool m_panEditor = false;
         ToolConfig m_globalConfig;
     };
-
-    void myCopyGroups(GameObject* from, GameObject* to) {
-        // groups
-        if (!to->m_groups) to->addToGroup(1);
-        if (from->m_groups) {
-            std::memcpy(to->m_groups, from->m_groups, sizeof(short) * 10);
-        } else {
-            to->m_groups->fill(0);
-        }
-        to->m_groupCount = from->m_groupCount;
-    }
 
     bool toolIsActivated() {
         #ifdef GEODE_IS_WINDOWS 
@@ -108,7 +101,7 @@ class $modify(MyEditorUI, EditorUI) {
     void initButtons() {
         auto bigBtn = CCMenuItemSpriteExtra::create(
             CCSprite::createWithSpriteFrameName("TWT_tool_off.png"_spr), this,
-            menu_selector(MyEditorUI::onMyButton));
+            menu_selector(MyEditorUI::onMainButton));
         m_fields->m_button = bigBtn;
         auto twtMenu = CCMenu::create();
         if (!Mod::get()->getSettingValue<bool>("hide-info-button")) {
@@ -146,7 +139,7 @@ class $modify(MyEditorUI, EditorUI) {
         this->template addEventListener<keybinds::InvokeBindFilter>(
             [=](keybinds::InvokeBindEvent* event) {
                 if (event->isDown()) {
-                    this->onMyButton(nullptr);
+                    this->onMainButton(nullptr);
                 }
                 return ListenerResult::Propagate;
             },
@@ -166,7 +159,7 @@ class $modify(MyEditorUI, EditorUI) {
             CCDelayTime::create(timeSec), CCFadeOut::create(timeSec), nullptr));
     }
 
-    void onMyButton(CCObject*) {
+    void onMainButton(CCObject*) {
         m_fields->m_buttonIsActivated = !m_fields->m_buttonIsActivated;
         auto btn = m_fields->m_button;
         if (m_fields->m_buttonIsActivated) {
@@ -181,6 +174,14 @@ class $modify(MyEditorUI, EditorUI) {
     }
 
     void onInfoButton(CCObject*) {
+        auto objs = EditorUI::getSelectedObjects();
+        auto colors = getObjectsAllColors(objs);
+        auto commonBase = getCommonBaseColor(objs);
+        auto commonDet = getCommonDetailColor(objs);
+        log::debug("all colors = {}", colors);
+        log::debug("base common = {}", commonBase.value_or(-999));
+        log::debug("detail common = {}", commonDet.value_or(-999));
+
         FLAlertLayer::create(
             "Color Example",
             "text",
@@ -398,7 +399,7 @@ class $modify(MyEditorUI, EditorUI) {
         button->addChild(marker);
         // update m_globalConfig
         auto config = static_cast<UpperMenuButtonParameters*>(button->getUserObject())->m_config;
-        m_fields->m_globalConfig.targetStr = config.m_triggerConfigString;
+        m_fields->m_globalConfig.m_targetConfig = config;
 
         applyToolConfig();
     }
@@ -469,7 +470,7 @@ class $modify(MyEditorUI, EditorUI) {
 
         // update m_globalConfig
         auto config = static_cast<LowerMenuButtonParameters*>(button->getUserObject())->m_config;
-        m_fields->m_globalConfig.group = config.second;
+        m_fields->m_globalConfig.m_group = config.second;
 
         applyToolConfig();
     }
@@ -489,7 +490,8 @@ class $modify(MyEditorUI, EditorUI) {
             return;
         }
         // create and save copy of target object 
-        m_fields->m_objectTargetCopy = targetObj->getSaveString(nullptr);
+        m_fields->m_objectTargetInitial = targetObj->getSaveString(nullptr);
+        m_fields->m_objectTargetLastUse = m_fields->m_objectTargetInitial;
         
         // create and save copy of source objects
         m_fields->m_objectsSourceCopy = CCArray::create();
@@ -519,7 +521,7 @@ class $modify(MyEditorUI, EditorUI) {
                 return;
             }
         }
-        m_fields->m_globalConfig.sourceFunc = forSourceObjType->second.m_srcFuncType;
+        m_fields->m_globalConfig.m_sourceFunc = forSourceObjType->second.m_srcFuncType;
 
         { // create upper menu
             auto upperMenuConfig = forSourceObjType->second.m_variants;
@@ -535,20 +537,45 @@ class $modify(MyEditorUI, EditorUI) {
 
         std::vector<std::pair<std::string, int>> lowerMenuConfig;
         { // get lower menu config (depends on function for source objects)
-            switch (m_fields->m_globalConfig.sourceFunc) {
+            switch (m_fields->m_globalConfig.m_sourceFunc) {
                 case sourceFuncType::addGr:
                 case sourceFuncType::addGrSM: {
-                    auto newGroupPossible = isNewGroupPossible(m_fields->m_objectsSourceCopy);
+                    auto newGroupPossible = isNewGroupPossible(m_fields->m_objectsSource);
                     if (newGroupPossible) {
                         int nextFree = levelLayer->getNextFreeGroupID(nullptr);
                         lowerMenuConfig.push_back({std::format("next ({})", nextFree), nextFree});
                         // lowerMenuConfig.push_back({"next free", nextFree});
                     }
-                    auto commonGroups = getObjectsCommonGroups(m_fields->m_objectsSourceCopy);
+                    auto commonGroups = getObjectsCommonGroups(m_fields->m_objectsSource);
                     for (unsigned i = 0; i < commonGroups.size(); i++) {
                         lowerMenuConfig.push_back({std::format("group {}", commonGroups.at(i)), commonGroups.at(i)});
                     }
-                    lowerMenuConfig.push_back({"none", -1});
+                    lowerMenuConfig.push_back({"None", -1});
+                    break;
+                }
+                case sourceFuncType::color: {
+                    auto allColors = getObjectsAllColors(m_fields->m_objectsSource);
+                    auto maybeCommonBaseCol = getCommonBaseColor(m_fields->m_objectsSource);
+                    auto maybeCommonDetailCol = getCommonDetailColor(m_fields->m_objectsSource);
+                    if (maybeCommonBaseCol && *maybeCommonBaseCol != 0) {
+                        auto col = *maybeCommonBaseCol;
+                        if (colorIdName.contains(col)) 
+                            lowerMenuConfig.push_back({std::format("(base) {}", colorIdName.at(col)), col});
+                        else lowerMenuConfig.push_back({std::format("(base) col {}", col), col});
+                    }
+                    if (maybeCommonDetailCol && *maybeCommonDetailCol != 0) {
+                        auto col = *maybeCommonDetailCol;
+                        if (colorIdName.contains(col)) 
+                            lowerMenuConfig.push_back({std::format("(detail) {}", colorIdName.at(col)), col});
+                        else lowerMenuConfig.push_back({std::format("(detail) col {}", col), col});
+                    }
+                    for (auto col : allColors) {
+                        if (maybeCommonBaseCol && col == *maybeCommonBaseCol) continue;
+                        if (maybeCommonDetailCol && col == *maybeCommonDetailCol) continue;
+                        if (colorIdName.contains(col)) lowerMenuConfig.push_back({colorIdName.at(col), col});
+                        else if (col != 0) lowerMenuConfig.push_back({std::format("col {}", col), col});
+                    }
+                    lowerMenuConfig.push_back({"None", -1});
                     break;
                 }
                 default: break;
@@ -567,18 +594,28 @@ class $modify(MyEditorUI, EditorUI) {
             lowerMenu->setPosition(targetObj->getPosition() + ccp(5, -15));
         }
 
-        m_fields->m_globalConfig.isFinished = true;
+        m_fields->m_globalConfig.m_isFinished = true;
         applyToolConfig();
     }
 
 
     void applyToolConfig() {
-        if (!m_fields->m_globalConfig.isFinished) return;
-        auto targetStr = m_fields->m_globalConfig.targetStr;
-        auto sourceFunc = m_fields->m_globalConfig.sourceFunc;
-        short group = m_fields->m_globalConfig.group;
+        if (!m_fields->m_globalConfig.m_isFinished) return;
+        auto targetStr = m_fields->m_globalConfig.m_targetConfig.m_triggerConfigString;
+        auto conditionalTargetStr = m_fields->m_globalConfig.m_targetConfig.m_triggerConditionalConfigString;
+        auto sourceFunc = m_fields->m_globalConfig.m_sourceFunc;
+        short group = m_fields->m_globalConfig.m_group;
         bool resetToDefault = group == -1;
         auto levelLayer = LevelEditorLayer::get();
+
+        { // check if target object was changed after previous tool use
+            auto targetObjNow = m_fields->m_objectTarget->getSaveString(nullptr);
+            auto targetObjLast = m_fields->m_objectTargetLastUse;
+            log::debug("previous initial: {}", m_fields->m_objectTargetInitial);
+            m_fields->m_objectTargetInitial = applyDifference(
+                targetObjLast, targetObjNow, m_fields->m_objectTargetInitial);
+            log::debug("current initial: {}", m_fields->m_objectTargetInitial);
+        }
         
         // source objects
         for (unsigned i = 0; i < m_fields->m_objectsSource->count(); i++) {
@@ -587,7 +624,7 @@ class $modify(MyEditorUI, EditorUI) {
             myCopyGroups(objDefaultAttributes, obj); // restore initial groups
         }
 
-        if (!resetToDefault) switch (m_fields->m_globalConfig.sourceFunc) {
+        if (!resetToDefault) switch (m_fields->m_globalConfig.m_sourceFunc) {
             case sourceFuncType::addGr: {
                 addToGroup(group, m_fields->m_objectsSource);
                 break;
@@ -596,19 +633,49 @@ class $modify(MyEditorUI, EditorUI) {
                 addToGroupSM(group, m_fields->m_objectsSource);
                 break;
             }
+            case sourceFuncType::color: {
+                // deselect source objects to be able to preview color
+                if (Mod::get()->getSettingValue<bool>("preview-color")) {
+                    bool wereSelected = false;
+                    for (unsigned i = 0; i < m_fields->m_objectsSource->count(); i++) {
+                        auto obj = static_cast<GameObject*>(m_fields->m_objectsSource->objectAtIndex(i));
+                        if (obj->m_isSelected) wereSelected = true;
+                        EditorUI::deselectObject(obj);
+                    }
+                    if (wereSelected) showDebugText("Color preview", 1);
+                }
+                break;
+            }
             default: break;
         }
 
         // target object
         std::string modifiedTargetObject;
+        std::string initialTargetObject = m_fields->m_objectTargetInitial;
         if (!resetToDefault) {
-            size_t pos = targetStr.find("g"); // group
+            size_t pos = targetStr.find("g"); // g - group
             if (pos != std::string::npos) {
                 targetStr.replace(pos, 1, std::to_string(group));
             }
-            modifiedTargetObject = std::format("{},{}", m_fields->m_objectTargetCopy, targetStr);
+            modifiedTargetObject = std::format("{},{}", initialTargetObject, targetStr);
+            // conditional config
+            auto objKeyVal = objectToKeyVal(initialTargetObject);
+            for (unsigned i = 0; i < conditionalTargetStr.size(); i++) {
+                auto condition = conditionalTargetStr.at(i);
+                if (objKeyVal.contains(condition.m_condition.first) && 
+                    (objKeyVal[condition.m_condition.first] == "" || 
+                    objKeyVal[condition.m_condition.first] == condition.m_condition.second)) {
+                    // if key and value exist, add conditional "yes" string
+                    modifiedTargetObject = std::format("{},{}", modifiedTargetObject, condition.m_yes);
+                    log::debug("conditional YES");
+                } else {
+                    // if key or value not exist, add conditional "no" string
+                    modifiedTargetObject = std::format("{},{}", modifiedTargetObject, condition.m_no);
+                    log::debug("conditional NO");
+                }
+            }
         } else {
-            modifiedTargetObject = m_fields->m_objectTargetCopy;
+            modifiedTargetObject = initialTargetObject;
         }
         auto objArray = levelLayer->createObjectsFromString(modifiedTargetObject, true, true); 
         if (objArray->count() == 0) {
@@ -617,13 +684,13 @@ class $modify(MyEditorUI, EditorUI) {
             return;
         }
         auto newObj = static_cast<GameObject*>(objArray->objectAtIndex(0));
-        newObj->setPosition(m_fields->m_objectTarget->getPosition());
         EditorUI::selectObject(m_fields->m_objectTarget, true);
         EditorUI::onDeleteSelected(nullptr);
         m_fields->m_objectTarget = newObj;
 
         levelLayer->m_undoObjects->removeLastObject();
         
+        m_fields->m_objectTargetLastUse = newObj->getSaveString(nullptr);
         EditorUI::selectObject(newObj, true);
         EditorUI::updateButtons();
     }
@@ -699,6 +766,109 @@ class $modify(MyEditorUI, EditorUI) {
             obj->m_isSpawnTriggered = true;
             obj->m_isMultiTriggered = true;
         }
+    }
+
+    void myCopyGroups(GameObject* from, GameObject* to) {
+        if (!to->m_groups) to->addToGroup(1);
+        if (from->m_groups) {
+            std::memcpy(to->m_groups, from->m_groups, sizeof(short) * 10);
+        } else {
+            to->m_groups->fill(0);
+        }
+        to->m_groupCount = from->m_groupCount;
+    }
+
+    std::vector<int> getObjectsAllColors(CCArray * objects) {
+        std::set<int> colorIds;
+        for (unsigned i = 0; i < objects->count(); i++) {
+            auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
+            if (obj->m_baseColor) {
+                auto colorId = obj->m_baseColor->m_colorID;
+                if (colorId == 0) colorId = obj->m_baseColor->m_defaultColorID;
+                colorIds.insert(colorId);
+            }
+            if (obj->m_detailColor) {
+                auto colorId = obj->m_detailColor->m_colorID;
+                if (colorId == 0) colorId = obj->m_detailColor->m_defaultColorID;
+                colorIds.insert(colorId);
+            }
+        }
+        return std::vector<int>(colorIds.begin(), colorIds.end());
+    }
+
+    std::optional<int> getCommonBaseColor(CCArray * objects) {
+        int commonBaseCol = -1;
+        for (unsigned i = 0; i < objects->count(); i++) {
+            auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
+            if (obj->m_baseColor) {
+                auto colorId = obj->m_baseColor->m_colorID;
+                if (colorId == 0) colorId = obj->m_baseColor->m_defaultColorID;
+                if (commonBaseCol != colorId) {
+                    if (commonBaseCol == -1) commonBaseCol = colorId;
+                    else return {};
+                }
+            }
+        }
+        if (commonBaseCol == -1) return {};
+        return commonBaseCol;
+    }
+
+    std::optional<int> getCommonDetailColor(CCArray * objects) {
+        int commonDetailCol = -1;
+        for (unsigned i = 0; i < objects->count(); i++) {
+            auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
+            if (obj->m_detailColor) {
+                auto colorId = obj->m_detailColor->m_colorID;
+                if (colorId == 0) colorId = obj->m_detailColor->m_defaultColorID;
+                if (commonDetailCol != colorId) {
+                    if (commonDetailCol == -1) commonDetailCol = colorId;
+                    else return {};
+                }
+            }
+        }
+        if (commonDetailCol == -1) return {};
+        return commonDetailCol;
+    }
+
+    std::map<std::string, std::string> objectToKeyVal(std::string objSaveString) {
+        std::stringstream ss(objSaveString);
+        std::map<std::string, std::string> keyVals;
+        std::string key, val;
+        while (std::getline(ss, key, ',') && std::getline(ss, val, ',')) {
+            keyVals.insert({key, val});
+        }
+        return keyVals;
+    }
+
+    // needed to check if something was changed in targetObj via editObject menu or somehow else
+    // while tool interface was open. This function computes this difference and applies
+    // it to the "obj" witch is an initial state of targetObj
+    std::string applyDifference(std::string before, std::string after, std::string obj) {
+        auto kvBefore = objectToKeyVal(before);
+        auto kvAfter = objectToKeyVal(after);
+        auto kvObj = objectToKeyVal(obj);
+        // remove not changed elements
+        for (auto it = kvBefore.begin(); it != kvBefore.end();) {
+            if (kvAfter.contains(it->first) && it->second == kvAfter.at(it->first)) {
+                kvAfter.erase(it->first);
+                it = kvBefore.erase(it);
+            } else it++;
+        }
+        // remove kv-s from "before"
+        for (auto it = kvBefore.begin(); it != kvBefore.end(); it++) {
+            kvObj.erase(it->first);
+        }
+        // and add from after
+        for (auto it = kvAfter.begin(); it != kvAfter.end(); it++) {
+            kvObj.insert(*it);
+        }
+        // convert key-value map to obj string
+        std::string result;
+        for (auto it = kvObj.begin(); it != kvObj.end(); it++) {
+            result += std::format("{},{},", it->first, it->second);
+        }
+        result.pop_back();
+        return result;
     }
     
     CCPoint calculateLineStartOnRectangle(CCPoint endPoint, std::pair<CCPoint, CCPoint> box) {
@@ -793,9 +963,9 @@ class $modify(MyEditorUI, EditorUI) {
         m_fields->m_objectsSource = nullptr;
         m_fields->m_objectTarget = nullptr;
         m_fields->m_objectsSourceCopy = nullptr;
-        m_fields->m_objectTargetCopy = "";
+        m_fields->m_objectTargetInitial = "";
         m_fields->m_interfaceIsVisible = false;
-        m_fields->m_globalConfig.isFinished = false;
+        m_fields->m_globalConfig.m_isFinished = false;
 
         EditorUI::updateButtons();
         log::debug("tool reset");
