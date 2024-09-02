@@ -15,14 +15,25 @@ using namespace geode::prelude;
 
 class $modify(MyEditorUI, EditorUI) {
     struct ToolConfig {
-        // std::string targetStr;
         Variant m_targetConfig;
         sourceFuncType m_sourceFunc;
         short m_group;
         bool m_isFinished = false;
     };
 
+    struct ModSettings {
+        bool m_previewColor = false;
+        bool m_ctrlModifierEnabled = false;
+    };
+
+    enum Mode {
+        SetupMode, PreviewMode
+    };
+
     struct Fields {
+        Mode m_mode = Mode::SetupMode;
+        ModSettings m_modSettings;
+        // for setup mode
         CCMenuItemSpriteExtra* m_button = nullptr;
         CCLabelBMFont* m_debugLabel = nullptr;
         CCDrawNode* m_drawingLayer = nullptr;
@@ -36,16 +47,16 @@ class $modify(MyEditorUI, EditorUI) {
         std::string m_objectTargetLastUse;
         Ref<CCMenu> m_upperMenu = nullptr;
         Ref<CCMenu> m_lowerMenu = nullptr;
-        bool m_ctrlModifierEnabled = false;
         bool m_buttonIsActivated = false;
         bool m_interfaceIsVisible = false;
         bool m_panEditor = false;
         ToolConfig m_globalConfig;
+        // for preview mode
     };
 
     bool toolIsActivated() {
         #ifdef GEODE_IS_WINDOWS 
-            return ((m_fields->m_ctrlModifierEnabled && 
+            return ((m_fields->m_modSettings.m_ctrlModifierEnabled && 
                 CCKeyboardDispatcher::get()->getControlKeyPressed()) || 
                 m_fields->m_buttonIsActivated) && !m_fields->m_panEditor;
         #else
@@ -99,11 +110,14 @@ class $modify(MyEditorUI, EditorUI) {
     }
 
     void initButtons() {
-        auto bigBtn = CCMenuItemSpriteExtra::create(
-            CCSprite::createWithSpriteFrameName("TWT_tool_off.png"_spr), this,
-            menu_selector(MyEditorUI::onMainButton));
-        m_fields->m_button = bigBtn;
+        // large button
+        auto largeBtnSprite = CCSprite::createWithSpriteFrameName("TWT_tool_off.png"_spr);
+        largeBtnSprite->setScale(.91f);
+        auto largeBtn = CCMenuItemSpriteExtra::create(
+            largeBtnSprite, this, menu_selector(MyEditorUI::onMainButton));
+        m_fields->m_button = largeBtn;
         auto twtMenu = CCMenu::create();
+        // info button
         if (!Mod::get()->getSettingValue<bool>("hide-info-button")) {
             auto smallBtn = CCMenuItemSpriteExtra::create(
                 CCSprite::createWithSpriteFrameName("GJ_infoIcon_001.png"), this,
@@ -111,16 +125,41 @@ class $modify(MyEditorUI, EditorUI) {
             twtMenu->addChild(smallBtn);
             smallBtn->setZOrder(2);
         }
-        twtMenu->setContentWidth(bigBtn->getContentWidth());
-        twtMenu->setContentHeight(bigBtn->getContentHeight());
+        // mode selection buttons
+        auto setupBtnSpr = ButtonSprite::create("Set up");
+        setupBtnSpr->setScale(.5);
+        auto setupBtn = CCMenuItemSpriteExtra::create(
+			setupBtnSpr, this, menu_selector(MyEditorUI::onModeChanged));
+        setupBtn->setTag(Mode::SetupMode);
+
+        auto previewBtnSpr = ButtonSprite::create("Preview");
+        previewBtnSpr->setScale(.5);
+        auto previewBtn = CCMenuItemSpriteExtra::create(
+			previewBtnSpr, this, menu_selector(MyEditorUI::onModeChanged));
+        previewBtn->setTag(Mode::PreviewMode);
+
+        // menu
+        twtMenu->setContentWidth(largeBtn->getContentWidth() + previewBtn->getContentWidth());
+        twtMenu->setContentHeight(largeBtn->getContentHeight());
         twtMenu->setID("twt-menu");
         
-        twtMenu->addChild(bigBtn);
-        bigBtn->setPosition(twtMenu->getContentSize() / 2);
+        twtMenu->addChild(largeBtn);
+        largeBtn->setPosition(largeBtn->getContentSize() / 2);
+
+        twtMenu->addChild(setupBtn);
+        setupBtn->setPosition(ccp(largeBtn->getContentSize().width + setupBtn->getContentSize().width / 2, largeBtn->getContentHeight() * .75));
+
+        twtMenu->addChild(previewBtn);
+        previewBtn->setPosition(ccp(largeBtn->getContentSize().width + previewBtn->getContentSize().width / 2, largeBtn->getContentHeight() * .25));
 
         auto undoMenu = this->getChildByID("undo-menu");
+        undoMenu->setContentSize(undoMenu->getContentSize() + ccp(50, 0));
+        undoMenu->setPositionX(undoMenu->getPositionX() + 25);
         undoMenu->addChild(twtMenu);
         undoMenu->updateLayout();
+
+        auto slider = this->getChildByID("position-slider");
+        slider->setPositionX(slider->getPositionX() + 50);
     }
 
     void setKeybinds() {
@@ -159,14 +198,19 @@ class $modify(MyEditorUI, EditorUI) {
             CCDelayTime::create(timeSec), CCFadeOut::create(timeSec), nullptr));
     }
 
-    void onMainButton(CCObject*) {
+    void onMainButton(CCObject* sender) {
+        auto oldSprite = static_cast<CCMenuItemSpriteExtra*>(sender)->getNormalImage();
         m_fields->m_buttonIsActivated = !m_fields->m_buttonIsActivated;
         auto btn = m_fields->m_button;
         if (m_fields->m_buttonIsActivated) {
-            btn->setSprite(CCSprite::createWithSpriteFrameName("TWT_tool_on.png"_spr));
+            auto sprite = CCSprite::createWithSpriteFrameName("TWT_tool_on.png"_spr);
+            sprite->setScale(oldSprite->getScale());
+            btn->setSprite(sprite);
             showDebugText("Tool is on");
         } else {
-            btn->setSprite(CCSprite::createWithSpriteFrameName("TWT_tool_off.png"_spr));
+            auto sprite = CCSprite::createWithSpriteFrameName("TWT_tool_off.png"_spr);
+            sprite->setScale(oldSprite->getScale());
+            btn->setSprite(sprite);
             m_fields->m_panEditor = false;
             resetTool();
             showDebugText("Tool is off");
@@ -174,14 +218,6 @@ class $modify(MyEditorUI, EditorUI) {
     }
 
     void onInfoButton(CCObject*) {
-        auto objs = EditorUI::getSelectedObjects();
-        auto colors = getObjectsAllColors(objs);
-        auto commonBase = getCommonBaseColor(objs);
-        auto commonDet = getCommonDetailColor(objs);
-        log::debug("all colors = {}", colors);
-        log::debug("base common = {}", commonBase.value_or(-999));
-        log::debug("detail common = {}", commonDet.value_or(-999));
-
         FLAlertLayer::create(
             "Color Example",
             "text",
@@ -189,15 +225,31 @@ class $modify(MyEditorUI, EditorUI) {
         )->show();
     }
 
+    void onModeChanged(CCObject* sender) {
+        Mode newMode = static_cast<Mode>(sender->getTag());
+        if (m_fields->m_mode == newMode) return;
+        m_fields->m_mode = newMode;
+        resetTool();
+        if (newMode == Mode::SetupMode) {
+            showDebugText("Setup mode");
+        } else {
+            showDebugText("Preview mode");
+
+        }
+    }
+
+
     // --------------------------- overwritten functions ---------------------
 
     $override bool init(LevelEditorLayer * layer) {
         if (!EditorUI::init(layer)) return false;
+        // init mod settings
+        m_fields->m_modSettings.m_previewColor =  Mod::get()->getSettingValue<bool>("preview-color");
+        #ifdef GEODE_IS_WINDOWS
+            m_fields->m_modSettings.m_ctrlModifierEnabled = Mod::get()->getSettingValue<bool>("control-key-modifier");
+        #endif
         initButtons();
         setKeybinds();
-        #ifdef GEODE_IS_WINDOWS
-            m_fields->m_ctrlModifierEnabled = Mod::get()->getSettingValue<bool>("control-key-modifier");
-        #endif
         this->schedule(SEL_SCHEDULE(&MyEditorUI::controlTargetObjectCallback), 0.f);
         return true;
     }
@@ -516,7 +568,7 @@ class $modify(MyEditorUI, EditorUI) {
         if (forSourceObjType == forTargetObjType->second.end()) {
             forSourceObjType = forTargetObjType->second.find(srcObjType::any);
             if (forSourceObjType == forTargetObjType->second.end()) {
-                //todo
+                // todo: optional "smart filter" for this situation
                 log::debug("this combination is not supported");
                 return;
             }
@@ -539,7 +591,8 @@ class $modify(MyEditorUI, EditorUI) {
         { // get lower menu config (depends on function for source objects)
             switch (m_fields->m_globalConfig.m_sourceFunc) {
                 case sourceFuncType::addGr:
-                case sourceFuncType::addGrSM: {
+                case sourceFuncType::addGrSM:
+                case sourceFuncType::addGrAnim: {
                     auto newGroupPossible = isNewGroupPossible(m_fields->m_objectsSource);
                     if (newGroupPossible) {
                         int nextFree = levelLayer->getNextFreeGroupID(nullptr);
@@ -630,12 +683,18 @@ class $modify(MyEditorUI, EditorUI) {
                 break;
             }
             case sourceFuncType::addGrSM: {
+                // todo: optionally disable this
                 addToGroupSM(group, m_fields->m_objectsSource);
+                break;
+            }
+            case sourceFuncType::addGrAnim: {
+                // and this
+                addToGroupAnim(group, m_fields->m_objectsSource);
                 break;
             }
             case sourceFuncType::color: {
                 // deselect source objects to be able to preview color
-                if (Mod::get()->getSettingValue<bool>("preview-color")) {
+                if (m_fields->m_modSettings.m_previewColor) {
                     bool wereSelected = false;
                     for (unsigned i = 0; i < m_fields->m_objectsSource->count(); i++) {
                         auto obj = static_cast<GameObject*>(m_fields->m_objectsSource->objectAtIndex(i));
@@ -698,6 +757,7 @@ class $modify(MyEditorUI, EditorUI) {
     // ------------------------ utility ---------------------------
 
     srcObjType getObjectsCommonType(CCArray * objects) {
+        // trig
         auto type = srcObjType::trig;
         bool yes = true;
         for (unsigned i = 0; i < objects->count(); i++) {
@@ -708,8 +768,30 @@ class $modify(MyEditorUI, EditorUI) {
             }
         }
         if (yes) return type; 
-        type = srcObjType::obj;
-        return type;
+        // anim
+        type = srcObjType::anim;
+        yes = true;
+        for (unsigned i = 0; i < objects->count(); i++) {
+            auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
+            if (!animatedIDs.contains(obj->m_objectID)) {
+                yes = false;
+                break;
+            }
+        }
+        if (yes) return type;
+        // keyframe
+        type = srcObjType::anim;
+        yes = true;
+        for (unsigned i = 0; i < objects->count(); i++) {
+            auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
+            if (obj->m_objectID == keyFrameOjb) {
+                yes = false;
+                break;
+            }
+        }
+        if (yes) return type;
+        // else
+        return srcObjType::any;
     }
 
     std::vector<short> getObjectsCommonGroups(CCArray * objects) {
@@ -765,6 +847,14 @@ class $modify(MyEditorUI, EditorUI) {
             obj->addToGroup(group);
             obj->m_isSpawnTriggered = true;
             obj->m_isMultiTriggered = true;
+        }
+    }
+
+    void addToGroupAnim(int group, CCArray * objects) {
+        for (unsigned i = 0; i < objects->count(); i++) {
+            auto obj = static_cast<EffectGameObject*>(objects->objectAtIndex(i));
+            obj->addToGroup(group);
+            obj->m_animateOnTrigger = true;
         }
     }
 
