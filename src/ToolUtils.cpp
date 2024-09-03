@@ -1,0 +1,208 @@
+#include "EditorUI.hpp"
+
+srcObjType MyEditorUI::getTypeById(short objId) {
+    if (triggerIDs.contains(objId)) {
+        return srcObjType::trig;
+    } else if (animatedIDs.contains(objId)) {
+        return srcObjType::anim;
+    } else if (objId == keyFrameOjb) {
+        return srcObjType::keyFrame;
+    } else {
+        return srcObjType::any;
+    }
+}
+
+CCArray * MyEditorUI::filterObjectsByType(srcObjType objType, CCArray * objects, bool color) {
+    auto result = CCArray::create();
+    for (unsigned i = 0; i < objects->count(); i++) {
+        auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
+        auto type = getTypeById(obj->m_objectID);
+        if (objType == srcObjType::any || type == objType) {
+            result->addObject(obj);
+            if (color) obj->selectObject(ccc3(255, 0, 255));
+        } else {
+            if (color) EditorUI::deselectObject(obj);
+        }
+    }
+    return result;
+}
+
+
+std::set<srcObjType> MyEditorUI::getObjectsAllTypes(CCArray * objects) {
+    std::set<srcObjType> presentTypes;
+    for (unsigned i = 0; i < objects->count(); i++) {
+        auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
+        auto type = getTypeById(obj->m_objectID);
+        presentTypes.insert(type);
+    }
+    return presentTypes;
+}
+
+std::vector<short> MyEditorUI::getObjectsCommonGroups(CCArray * objects) {
+    if (objects->count() == 0) return {};
+    auto firstObj = static_cast<GameObject*>(objects->objectAtIndex(0));
+
+    if(!firstObj->m_groups) return std::vector<short>();
+
+    std::set<short> commonGroups(firstObj->m_groups->begin(), firstObj->m_groups->end());
+    commonGroups.erase(0);
+
+    for (unsigned i = 1; i < objects->count(); i++) {
+        auto groups = static_cast<GameObject*>(objects->objectAtIndex(i))->m_groups;
+        if (!groups) return std::vector<short>();
+
+        std::set<short> foundGroups;
+        for (unsigned i = 0; i < groups->size(); i++) {
+            short group = groups->at(i);
+            if (group == 0) break;
+            if (commonGroups.find(group) != commonGroups.end()) {
+                foundGroups.insert(group);
+            }
+        }
+        commonGroups = foundGroups;
+        if (commonGroups.size() == 0) {    
+            break;
+        }
+    }
+    return std::vector<short>(commonGroups.begin(), commonGroups.end());
+};
+
+bool MyEditorUI::isNewGroupPossible(CCArray * objects) {
+    for (unsigned i = 0; i < objects->count(); i++) {
+        auto groups = static_cast<GameObject*>(objects->objectAtIndex(i))->m_groups;
+        if (!groups) continue;
+        if (groups->at(9) != 0) {  
+            return false;
+        }
+    }
+    return true;
+};
+
+void MyEditorUI::addToGroup(int group, CCArray * objects) {
+    for (unsigned i = 0; i < objects->count(); i++) {
+        auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
+        obj->addToGroup(group);
+    }
+};
+
+void MyEditorUI::addToGroupSM(int group, CCArray * objects) {
+    for (unsigned i = 0; i < objects->count(); i++) {
+        auto obj = static_cast<EffectGameObject*>(objects->objectAtIndex(i));
+        obj->addToGroup(group);
+        obj->m_isSpawnTriggered = true;
+        obj->m_isMultiTriggered = true;
+    }
+};
+
+void MyEditorUI::addToGroupAnim(int group, CCArray * objects) {
+    for (unsigned i = 0; i < objects->count(); i++) {
+        auto obj = static_cast<EffectGameObject*>(objects->objectAtIndex(i));
+        obj->addToGroup(group);
+        obj->m_animateOnTrigger = true;
+    }
+};
+
+// todo: different things for triggers
+void MyEditorUI::myCopyGroups(GameObject* from, GameObject* to) {
+    if (!to->m_groups) to->addToGroup(1);
+    if (from->m_groups) {
+        std::memcpy(to->m_groups, from->m_groups, sizeof(short) * 10);
+    } else {
+        to->m_groups->fill(0);
+    }
+    to->m_groupCount = from->m_groupCount;
+};
+
+std::vector<int> MyEditorUI::getObjectsAllColors(CCArray * objects) {
+    std::set<int> colorIds;
+    for (unsigned i = 0; i < objects->count(); i++) {
+        auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
+        if (obj->m_baseColor) {
+            auto colorId = obj->m_baseColor->m_colorID;
+            if (colorId == 0) colorId = obj->m_baseColor->m_defaultColorID;
+            colorIds.insert(colorId);
+        }
+        if (obj->m_detailColor) {
+            auto colorId = obj->m_detailColor->m_colorID;
+            if (colorId == 0) colorId = obj->m_detailColor->m_defaultColorID;
+            colorIds.insert(colorId);
+        }
+    }
+    return std::vector<int>(colorIds.begin(), colorIds.end());
+};
+
+std::optional<int> MyEditorUI::getCommonBaseColor(CCArray * objects) {
+    int commonBaseCol = -1;
+    for (unsigned i = 0; i < objects->count(); i++) {
+        auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
+        if (obj->m_baseColor) {
+            auto colorId = obj->m_baseColor->m_colorID;
+            if (colorId == 0) colorId = obj->m_baseColor->m_defaultColorID;
+            if (commonBaseCol != colorId) {
+                if (commonBaseCol == -1) commonBaseCol = colorId;
+                else return {};
+            }
+        }
+    }
+    if (commonBaseCol == -1) return {};
+    return commonBaseCol;
+};
+
+std::optional<int> MyEditorUI::getCommonDetailColor(CCArray * objects) {
+    int commonDetailCol = -1;
+    for (unsigned i = 0; i < objects->count(); i++) {
+        auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
+        if (obj->m_detailColor) {
+            auto colorId = obj->m_detailColor->m_colorID;
+            if (colorId == 0) colorId = obj->m_detailColor->m_defaultColorID;
+            if (commonDetailCol != colorId) {
+                if (commonDetailCol == -1) commonDetailCol = colorId;
+                else return {};
+            }
+        }
+    }
+    if (commonDetailCol == -1) return {};
+    return commonDetailCol;
+};
+
+std::map<std::string, std::string> MyEditorUI::objectToKeyVal(std::string objSaveString) {
+    std::stringstream ss(objSaveString);
+    std::map<std::string, std::string> keyVals;
+    std::string key, val;
+    while (std::getline(ss, key, ',') && std::getline(ss, val, ',')) {
+        keyVals.insert({key, val});
+    }
+    return keyVals;
+};
+
+// needed to check if something was changed in targetObj via editObject menu or somehow else
+// while tool interface was open. This function computes this difference and applies
+// it to the "obj" witch is an initial state of targetObj
+std::string MyEditorUI::applyDifference(std::string before, std::string after, std::string obj) {
+    auto kvBefore = objectToKeyVal(before);
+    auto kvAfter = objectToKeyVal(after);
+    auto kvObj = objectToKeyVal(obj);
+    // remove not changed elements
+    for (auto it = kvBefore.begin(); it != kvBefore.end();) {
+        if (kvAfter.contains(it->first) && it->second == kvAfter.at(it->first)) {
+            kvAfter.erase(it->first);
+            it = kvBefore.erase(it);
+        } else it++;
+    }
+    // remove kv-s from "before"
+    for (auto it = kvBefore.begin(); it != kvBefore.end(); it++) {
+        kvObj.erase(it->first);
+    }
+    // and add from after
+    for (auto it = kvAfter.begin(); it != kvAfter.end(); it++) {
+        kvObj.insert(*it);
+    }
+    // convert key-value map to obj string
+    std::string result;
+    for (auto it = kvObj.begin(); it != kvObj.end(); it++) {
+        result += std::format("{},{},", it->first, it->second);
+    }
+    result.pop_back();
+    return result;
+};
+

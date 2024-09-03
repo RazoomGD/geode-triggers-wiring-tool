@@ -43,6 +43,12 @@
 			"default": true,
 			"name": "Preview color",
 			"description": "This setting, turns off default <cp>pink highlight</c> for selected objects, while using the tool on the <cy>Color trigger</c> or <cy>Pulse trigger</c>. \n(this allows you to preview the actual objects color)"
+		},
+		"smart-filter" : {
+			"type": "bool",
+			"default": false,
+			"name": "Smart Filter",
+			"description": "todo: description."
 		}
 	},
 	"resources": {

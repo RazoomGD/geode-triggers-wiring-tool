@@ -1,3 +1,5 @@
+#pragma once
+
 #include <map>
 #include <utility>
 #include <vector>
@@ -7,17 +9,22 @@
 using objId = short;
 
 enum srcObjType {
-    any,   // anything (objects)
-    trig,  // triggers
-    anim,  // animated objects
+    any,      // anything (objects)
+    trig,     // triggers
+    anim,     // animated objects
     keyFrame, // keyframe
 };
 
 enum sourceFuncType {
-    addGr,    // just add to the group
-    addGrSM,  // add group + set spawn trigger & multi trigger
+    addGr,     // just add to the group
+    addGrSM,   // add group + set spawn trigger & multi trigger
     addGrAnim, // add group + set animateOnTrigger
-    color,    // does nothing to source objects
+    color,     // does nothing to source objects
+};
+
+enum lowerMenuType {
+    selectGroup,
+    selectColor,
 };
 
 // Triggers (basically every object you are able to set as spawn trigger & multi trigger)
@@ -64,17 +71,6 @@ const std::map<int, std::string> colorIdName = {
 };
 
 
-
-/*
-
-1,4300,2,765,3,-456,57,32,155,10,156,12,128,2.5,129,2.5,      107,1;
-1,4300,2,765,3,-456,57,32,155,10,156,12,128,2.5,129,2.5,123,1,107,1;
-1,2065,2,885,3,-405,57,32,155,2,156,13,145,;
-1,2065,2,885,3,-405,57,32,155,2,156,13,123,1,145,30a-1a1a0.;
-
-*/
-// Common objects are all the remaining ids
-
 const struct Condition {
     std::pair<std::string, std::string> m_condition; // key, value (value "" == any)
     std::string m_yes;
@@ -82,61 +78,39 @@ const struct Condition {
 };
 
 const struct Variant {
-    std::string m_name;
+    std::string m_name; // shown in menu
     std::string m_triggerConfigString;
     std::vector<Condition> m_triggerConditionalConfigString;
+    sourceFuncType m_srcFuncType; // is used to create lower menu and apply the final config
+    srcObjType m_srcObjType;
+
+    std::pair<lowerMenuType, srcObjType> getLowerMenuType() {
+        static const std::map<sourceFuncType, lowerMenuType> sourceFuncToMenuType = {
+            {sourceFuncType::addGr, lowerMenuType::selectGroup},
+            {sourceFuncType::addGrSM, lowerMenuType::selectGroup},
+            {sourceFuncType::addGrAnim, lowerMenuType::selectGroup},
+            {sourceFuncType::color, lowerMenuType::selectColor},
+        };
+        return {sourceFuncToMenuType.at(this->m_srcFuncType), this->m_srcObjType};
+    }
 };
 
-const struct TargetOption {
-    sourceFuncType m_srcFuncType;
-    std::vector<Variant> m_variants;
+const std::map<objId, std::map<srcObjType, std::vector<Variant>>> CONFIGURATION = {
+    {1006, { // pulse trigger (test)
+        {srcObjType::any, {
+            {"Group test", "52,1,51,g", {}, sourceFuncType::addGr, srcObjType::any},
+            {"Group test 2", "52,1,51,g", {}, sourceFuncType::addGr, srcObjType::any},
+            {"Group test 3", "52,1,51,g", {}, sourceFuncType::addGr, srcObjType::any},
+            {"Color", "52,0,51,g", {}, sourceFuncType::color, srcObjType::any},
+        }},
+        {srcObjType::trig, {
+            {"Trig test", "52,0,51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
+            {"Trig test 2", "52,0,51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
+        }},
+    }}
 };
 
-const std::map<objId, std::map<srcObjType, TargetOption>> CONFIGURATION = {
-    {899, { // color trigger
-        {srcObjType::any, {sourceFuncType::color, {{"Color", "23,g"}}}},
-    }},
-    {901, { // move trigger
-        {srcObjType::any, {sourceFuncType::addGr, {{"Target", "51,g"}, 
-                                                    {"TargetPos", "100,1,394,0,71,g", {{{"394", "1"}, "100,0,394,1"}}}, 
-                                                    {"Center", "100,1,394,0,395,g", {{{"394", "1"}, "100,0,394,1"}}},
-                                                    }}},
-    }},
-    {1616, { // stop trigger
-        {srcObjType::trig, {sourceFuncType::addGr, {{"Target", "51,g"}}}},
-    }},
-    {1006, { // pulse trigger
-        {srcObjType::any, {sourceFuncType::addGr, {{"Group", "52,1,51,g"}}}},
-    }},
-    {1007, { // alpha trigger
-        {srcObjType::any, {sourceFuncType::addGr, {{"Group", "51,g"}}}},
-    }},
-    {1049, { // toggle trigger
-        {srcObjType::any, {sourceFuncType::addGr, {{"Group", "51,g"}}}},
-    }}, 
-    {1268, { // spawn trigger
-        {srcObjType::trig, {sourceFuncType::addGrSM, {{"Group", "51,g"}}}},
-    }},
-    {1346, { // rotate trigger
-        {srcObjType::any, {sourceFuncType::addGr, {{"Target", "51,g"}, 
-                                                    {"Center", "71,g"}, 
-                                                    {"Rot-Target", "100,1,394,0,401,g", {{{"394", "1"}, "100,0,394,1"}}},
-                                                    }}},
-    }},
-    {2067, { // scale trigger
-        {srcObjType::any, {sourceFuncType::addGr, {{"Target", "51,g"}, {"Center", "71,g"}}}},
-    }},
-    {1347, { // follow trigger
-        {srcObjType::any, {sourceFuncType::addGr, {{"Target", "51,g"}, {"Follow", "71,g"}}}},
-    }},
-    {1585, { // animate trigger
-        {srcObjType::anim, {sourceFuncType::addGrAnim, {{"Group", "51,g"}}}},
-    }},
-    {1585, { // keyframe trigger
-        {srcObjType::keyFrame, {sourceFuncType::addGr, {{"Animation", "76,g"}}}},
-    }},
 
-};
 
 
 /*

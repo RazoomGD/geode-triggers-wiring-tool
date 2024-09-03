@@ -8,7 +8,15 @@ set(SKIP_BUILDING_CODEGEN OFF)
 project(triggersWiringTool VERSION 1.0.0)
 
 add_library(${PROJECT_NAME} SHARED
-    src/main.cpp
+    src/ButtonListeners.cpp
+    src/EditorUI.cpp
+    src/EditorUtils.cpp
+    src/Inits.cpp
+    src/ToolInterfaceLogic.cpp
+    src/ToolMainLogic.cpp
+    src/ToolMenus.cpp
+    src/ToolTouchLogic.cpp
+    src/ToolUtils.cpp
     # Add any extra C++ source files here
 )
 
