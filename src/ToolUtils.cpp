@@ -96,22 +96,51 @@ void MyEditorUI::addToGroupSM(int group, CCArray * objects) {
 
 void MyEditorUI::addToGroupAnim(int group, CCArray * objects) {
     for (unsigned i = 0; i < objects->count(); i++) {
-        auto obj = static_cast<EffectGameObject*>(objects->objectAtIndex(i));
+        auto obj = static_cast<EnhancedGameObject*>(objects->objectAtIndex(i));
         obj->addToGroup(group);
-        obj->m_animateOnTrigger = true;
+        // it breaks with these ids
+        if (!animatedSpecialIDs.contains(obj->m_objectID)) obj->m_animateOnTrigger = true;
     }
 };
 
-// todo: different things for triggers
-void MyEditorUI::myCopyGroups(GameObject* from, GameObject* to) {
-    if (!to->m_groups) to->addToGroup(1);
+// copy 1)groups todo: 2)spawn, multi trigger, itemID, animate on trigger
+void MyEditorUI::myCopyObjectProps(GameObject * from, TWTObjCopy * to) {
     if (from->m_groups) {
         std::memcpy(to->m_groups, from->m_groups, sizeof(short) * 10);
     } else {
         to->m_groups->fill(0);
     }
     to->m_groupCount = from->m_groupCount;
+    auto objType = getTypeById(from->m_objectID);
+    switch (objType) {
+        case srcObjType::trig: {
+            to->m_isSpawnTrigger = static_cast<EffectGameObject*>(from)->m_isSpawnTriggered;
+            to->m_isMultiTrigger = static_cast<EffectGameObject*>(from)->m_isMultiTriggered;
+            break;
+        }
+        case srcObjType::anim: {
+            to->m_isAnimOnTrigger = static_cast<EnhancedGameObject*>(from)->m_animateOnTrigger;
+            break;
+        }
+        default: break;
+    };    
 };
+
+void MyEditorUI::myPasteObjectProps(TWTObjCopy * from, GameObject * to) {
+    if (!to->m_groups) to->addToGroup(1);
+    std::memcpy(to->m_groups, from->m_groups, sizeof(short) * 10);
+    to->m_groupCount = from->m_groupCount;
+    if (from->m_isSpawnTrigger) {
+        static_cast<EffectGameObject*>(to)->m_isSpawnTriggered = *(from->m_isSpawnTrigger);
+    }
+    if (from->m_isMultiTrigger) {
+        static_cast<EffectGameObject*>(to)->m_isMultiTriggered = *(from->m_isMultiTrigger);
+    }
+    if (from->m_isAnimOnTrigger) {
+        static_cast<EnhancedGameObject*>(to)->m_animateOnTrigger = *(from->m_isAnimOnTrigger);
+    }
+
+}
 
 std::vector<int> MyEditorUI::getObjectsAllColors(CCArray * objects) {
     std::set<int> colorIds;

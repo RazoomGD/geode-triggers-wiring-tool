@@ -80,8 +80,9 @@ void MyEditorUI::resetTool() {
     m_fields->m_upperMenu = nullptr;
     m_fields->m_lowerMenu = nullptr;
     m_fields->m_objectsSource = nullptr;
-    m_fields->m_objectTarget = nullptr;
     m_fields->m_objectsSourceCopy = nullptr;
+    m_fields->m_objectsSourceFiltered = nullptr;
+    m_fields->m_objectTarget = nullptr;
     m_fields->m_objectTargetInitial = "";
     m_fields->m_objectTargetLastUse = "";
 

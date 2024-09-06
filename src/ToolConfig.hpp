@@ -38,16 +38,20 @@ const std::set<objId> triggerIDs = {
     2912, 2911, 2910, 2909, 2922, 2923, 2924, 22, 1915, 58
 };
 
-// Animated objects (objects that can be animated with animate trigger)
+// Animated objects (objects that can be animated on animate trigger)
 const std::set<objId> animatedIDs = {
-    2065, 3000, 1583, 1697, 1841, 2026, 2038, 2050, 2871, 2871, 2883, 3121, 918, 1327, 1053, 3002, 3001, 1591, 1593, 
-    1849, 1850, 1698, 1699, 1857, 1860, 1842, 1936, 1937, 1938, 2030, 2029, 2028, 2027, 2039, 2040, 2041, 2042, 2054, 
-    2053, 2052, 2051, 2872, 2873, 2874, 2875, 2884, 2885, 2886, 2887, 2888, 2886, 2223, 2246, 2605, 3219, 3303, 3304, 
-    3492, 3493, 4211, 1329, 1328, 1584, 2012, 920, 1592, 1054, 1851, 1852, 1853, 1516, 1518, 1517, 1939, 2020, 2021, 
-    2033, 2032, 2031, 2043, 2044, 2045, 2865, 2864, 2055, 2876, 2877, 2878, 2889, 2890, 2891, 2629, 2630, 3482, 3483, 
-    4300, 919, 1050, 1051, 921, 924, 923, 1854, 1855, 1858, 1519, 1618, 1839, 2022, 2023, 2024, 2036, 2035, 2034, 2046, 
-    2047, 2048, 2869, 2868, 2867, 2879, 2880, 2881, 2892, 2893, 2694, 3119, 3484, 1052, 1582, 1856, 1840, 2025, 2037, 
-    2049, 2870, 2882, 2894, 3120 
+    2065, 3000, 3001, 3002, 1583, 1591, 1593, 1697, 1698, 1699, 1841, 1842, 1936, 2026, 2027, 2028, 2038, 2039, 
+    2040, 2050, 2051, 2052, 2871, 2872, 2873, 2883, 2884, 2885, 2223, 3121, 1329, 1053, 1592, 1054, 1849, 1850, 
+    1851, 1852, 1857, 1860, 1516, 1518, 1937, 1938, 1939, 2020, 2029, 2030, 2031, 2032, 2041, 2042, 2043, 2044, 
+    2053, 2054, 2055, 2864, 2874, 2875, 2876, 2877, 2886, 2887, 2888, 2889, 2246, 2605, 2629, 2630, 3303, 3304, 
+    3482, 4211, 3492, 3493, 1050, 920, 923, 924, 1853, 1854, 1855, 1519, 1618, 2021, 2022, 2023, 2033, 2034, 2035, 
+    2045, 2046, 2047, 2865, 2867, 2868, 2878, 2879, 2880, 2890, 2891, 2892, 2694, 3119, 3120, 3483, 3484, 4300, 
+    1051, 1052, 921, 2894, 1858, 1856, 1839, 1840, 2024, 2025, 2036, 2037, 2048, 2049, 2869, 2870, 2881, 2882, 
+    2893, 918, 1584, 2012
+};
+// Beast, bat and spike-ball
+const std::set<objId> animatedSpecialIDs = {
+    918, 1584, 2012
 };
 
 // Special objects (objects we process differently from triggers)
@@ -70,6 +74,20 @@ const std::map<int, std::string> colorIdName = {
     {1011, "White"},
 };
 
+struct TWTObjCopy : public CCObject {
+    TWTObjCopy() {
+        this->autorelease();
+        this->m_groups = new std::array<short, 10>;
+    }
+    ~TWTObjCopy() {
+        delete this->m_groups;
+    }
+    std::array<short, 10> * m_groups;
+    short m_groupCount;
+    std::optional<bool> m_isSpawnTrigger;
+    std::optional<bool> m_isMultiTrigger;
+    std::optional<bool> m_isAnimOnTrigger;
+};
 
 const struct Condition {
     std::pair<std::string, std::string> m_condition; // key, value (value "" == any)
@@ -96,26 +114,70 @@ const struct Variant {
 };
 
 const std::map<objId, std::map<srcObjType, std::vector<Variant>>> CONFIGURATION = {
-    {1006, { // pulse trigger (test)
+    {899, { // color trigger
         {srcObjType::any, {
-            {"Group test", "52,1,51,g", {}, sourceFuncType::addGr, srcObjType::any},
-            {"Group test 2", "52,1,51,g", {}, sourceFuncType::addGr, srcObjType::any},
-            {"Group test 3", "52,1,51,g", {}, sourceFuncType::addGr, srcObjType::any},
-            {"Color", "52,0,51,g", {}, sourceFuncType::color, srcObjType::any},
-        }},
+            {"Color", "23,g", {}, sourceFuncType::color, srcObjType::any},
+    }}}},
+    {901, { // move trigger
+        {srcObjType::any, {
+            {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+            {"Target_pos", "100,1,394,0,71,g", {{{"394", "1"}, "100,0,394,1"}}, sourceFuncType::addGr, srcObjType::any},
+            {"Center", "100,1,394,0,395,g", {{{"394", "1"}, "100,0,394,1"}}, sourceFuncType::addGr, srcObjType::any},
+    }}}},
+    {1616, { // stop trigger
         {srcObjType::trig, {
-            {"Trig test", "52,0,51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
-            {"Trig test 2", "52,0,51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
-        }},
-    }}
+            {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::trig},
+    }}}},
+    {1006, { // pulse trigger
+        {srcObjType::any, {
+            {"Color", "52,0,51,g", {}, sourceFuncType::color, srcObjType::any},
+            {"Group", "52,1,51,g", {}, sourceFuncType::addGr, srcObjType::any},
+    }}}},
+    {1007, { // alpha trigger
+        {srcObjType::any, {
+            {"Group", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+    }}}},
+    {1049, { // toggle trigger
+        {srcObjType::any, {
+            {"Group", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+    }}}},
+    {1268, { // spawn trigger
+        {srcObjType::trig, {
+            {"Group", "51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
+    }}}},
+    {1346, { // rotate trigger
+        {srcObjType::any, {
+            {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+            {"Center", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
+            {"Rot_target", "100,1,401,g", {{{"394", "1"}, "100,0,394,1"}}, sourceFuncType::addGr, srcObjType::any},
+    }}}},
+    {2067, { // scale trigger
+        {srcObjType::any, {
+            {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+            {"Center", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
+    }}}},
+    {1347, { // follow trigger
+        {srcObjType::any, {
+            {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+            {"Follow", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
+    }}}},
+    {1585, { // animate trigger
+        {srcObjType::anim, {
+            {"Group", "51,g", {}, sourceFuncType::addGrAnim, srcObjType::anim},
+    }}}},
+
+
 };
-
-
-
 
 /*
 
-1,3033,2,225,3,15,36,1,         520,1,521,1,545,1,522,1,523,1,546,1;
-1,3033,2,225,3,15,36,1,76,22222,520,1,521,1,545,1,522,1,523,1,546,1;
+1,1585,2,735,3,75,36,1,51,0,76,0;
+1,1585,2,735,3,75,36,1,51,111,76,0;
+1,1585,2,735,3,75,36,1,51,111,76,0;
+
+1,918,2,885,3,105,57,5.7;
+
+
+
 
 */

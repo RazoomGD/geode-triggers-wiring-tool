@@ -9,7 +9,7 @@ struct UpperMenuButtonParameters : public CCObject {
     }
 };
 
-void MyEditorUI::createUpperMenu(const std::vector<Variant>& configuration, bool selectFirst) {
+void MyEditorUI::createUpperMenu(const std::vector<Variant>& configuration, bool selectFirst, srcObjType commonType) {
     // remove old menu
     if (m_fields->m_upperMenu) m_fields->m_upperMenu->removeFromParent();
     // create new menu
@@ -26,7 +26,9 @@ void MyEditorUI::createUpperMenu(const std::vector<Variant>& configuration, bool
     // add buttons
     for (unsigned i = 0; i < configuration.size(); i++) {
         auto btnNode = CCNode::create();
-        auto label = CCLabelBMFont::create(configuration[i].m_name.c_str(), "bigFont.fnt");
+        std::string suffix = (configuration[i].m_srcObjType != commonType && 
+            configuration[i].m_srcObjType != srcObjType::any) ? "*" : "";
+        auto label = CCLabelBMFont::create((configuration[i].m_name + suffix).c_str(), "bigFont.fnt");
         label->setScale(0.5f);
         label->setAnchorPoint(ccp(0, 0));
         btnNode->addChild(label);
@@ -75,8 +77,8 @@ void MyEditorUI::upperMenuActionListener(CCObject * sender) {
         m_fields->m_globalConfig.m_isFinished = true;
     } else {
         m_fields->m_globalConfig.m_variant = config;
-        applyToolConfig();
     }
+    applyToolConfig();
 }
 
 
@@ -95,6 +97,7 @@ void MyEditorUI::createLowerMenuForVariant(Variant variant) {
     // consider source objects only of this type
     auto forObjectsType = variant.getLowerMenuType().second;
     auto filteredObjects = filterObjectsByType(forObjectsType, m_fields->m_objectsSource, true);
+    m_fields->m_objectsSourceFiltered = filteredObjects;
 
     std::vector<std::pair<std::string, int>> lowerMenuConfig;
     switch (menuType) {

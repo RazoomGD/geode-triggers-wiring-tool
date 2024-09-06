@@ -48,6 +48,7 @@ class $modify(MyEditorUI, EditorUI) {
         Ref<CCArray> m_objectsSource = nullptr;  // array of selected objects
         Ref<GameObject> m_objectTarget = nullptr;  // end object
         Ref<CCArray> m_objectsSourceCopy = nullptr;
+        Ref<CCArray> m_objectsSourceFiltered = nullptr;
         std::string m_objectTargetInitial;
         std::string m_objectTargetLastUse;
         Ref<CCMenu> m_upperMenu = nullptr;
@@ -92,7 +93,7 @@ class $modify(MyEditorUI, EditorUI) {
 
     // MENUS
 
-    void createUpperMenu(const std::vector<Variant>& configuration, bool selectFirst);
+    void createUpperMenu(const std::vector<Variant>& configuration, bool selectFirst, srcObjType commonType);
     void upperMenuActionListener(CCObject * sender);
 
     void createLowerMenuForVariant(Variant variant);
@@ -116,7 +117,8 @@ class $modify(MyEditorUI, EditorUI) {
     void addToGroup(int group, CCArray * objects);
     void addToGroupSM(int group, CCArray * objects);
     void addToGroupAnim(int group, CCArray * objects);
-    void myCopyGroups(GameObject* from, GameObject* to);
+    void myCopyObjectProps(GameObject * from, TWTObjCopy * to);
+    void myPasteObjectProps(TWTObjCopy * from, GameObject * to);
 
     std::vector<int> getObjectsAllColors(CCArray * objects);
     std::optional<int> getCommonBaseColor(CCArray * objects);
