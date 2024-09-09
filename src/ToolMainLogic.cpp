@@ -25,6 +25,8 @@ bool MyEditorUI::handleTargetObject() {
     // create and save copies of target object 
     m_fields->m_objectTargetInitial = targetObj->getSaveString(nullptr);
     m_fields->m_objectTargetLastUse = m_fields->m_objectTargetInitial;
+    // set next free group
+    m_fields->m_globalConfig.m_nextFreeGroup = LevelEditorLayer::get()->getNextFreeGroupID(nullptr);
     
     // create and save copy of source objects
     m_fields->m_objectsSourceCopy = CCArray::create();
@@ -42,45 +44,104 @@ bool MyEditorUI::handleTargetObject() {
         log::debug("obj not found in map");
         return false;
     } 
-    auto targetConfig = CONFIGURATION.find(targetObj->m_objectID);
+    // find source objects common types
+    std::set<objId> srcObjIds;
+    for (unsigned i = 0; i < m_fields->m_objectsSource->count(); i++) {
+        auto obj = static_cast<GameObject*>(m_fields->m_objectsSource->objectAtIndex(i));
+        srcObjIds.insert(obj->m_objectID);
+    }
+    std::set<srcObjType> commonTypes = getTypesById(*(srcObjIds.begin()));
+    for (auto objId : srcObjIds) {
+        auto objTypes = getTypesById(objId);
+        for (auto it = commonTypes.begin(); it != commonTypes.end();) {
+            if (!objTypes.contains(*it)) {
+                it = commonTypes.erase(it);
+            } else it++;
+        }
+    }
+    auto targetConfig = CONFIGURATION.find(targetObj->m_objectID)->second;
     // get variants for upper menu
     std::vector<Variant> upperMenuVariants;
-    auto srcTypes = getObjectsAllTypes(m_fields->m_objectsSource);
-    bool haveCommonType = srcTypes.size() == 1;
-    auto commonSrcType = haveCommonType ? *(srcTypes.begin()) : srcObjType::any;
     if (m_fields->m_modSettings.m_smartFilter) {
-        srcTypes.insert(srcObjType::any);
-        for (auto &type : srcTypes) {
-            if (targetConfig->second.contains(type)) {
-                auto targetSourceConfig = targetConfig->second.find(type)->second;
-                upperMenuVariants.insert(upperMenuVariants.end(), 
-                    targetSourceConfig.begin(), targetSourceConfig.end());
+        std::vector<Variant> anyOnlyUpperMenuVariants;
+        for (auto &variant : targetConfig) {
+            // when common type is not only any we (by default) dont show "any-only" variants
+            // we show them only when no other variants available
+            if (commonTypes.size() > 1 && variant.m_srcObjType == std::set{srcObjType::any}) {
+                anyOnlyUpperMenuVariants.push_back(variant);
+                continue;
+            }
+            
+            // if at least one object matches the variant, we accept this variant
+            for (auto objId : srcObjIds) {
+                auto objTypes = getTypesById(objId);
+                // if (objTypes.size() > 1) objTypes.erase(srcObjType::any);
+                bool acceptVariant = true;
+                for (auto requiredType : variant.m_srcObjType) {
+                    if (!objTypes.contains(requiredType)) {
+                        acceptVariant = false;
+                        break;
+                    }
+                }
+                if (acceptVariant) {
+                    upperMenuVariants.push_back(variant);
+                    break;
+                }
+            }  
+        }
+        if (!upperMenuVariants.size()) {
+            upperMenuVariants = anyOnlyUpperMenuVariants;
+        }
+
+        // for (auto &type : srcTypes) {
+        //     if (targetConfig.contains(type)) {
+        //         auto targetSourceConfig = targetConfig.find(type)->second;
+        //         upperMenuVariants.insert(upperMenuVariants.end(), 
+        //             targetSourceConfig.begin(), targetSourceConfig.end());
+        //     }
+        // }
+        // if (!upperMenuVariants.size() && targetConfig.contains(srcObjType::any)) {
+        //     upperMenuVariants = targetConfig.find(srcObjType::any)->second;
+        // }
+    } else {
+        for (auto &variant : targetConfig) { // todo: not tested yet
+            bool acceptVariant = true;
+            for (auto requiredType : variant.m_srcObjType) {
+                if (!commonTypes.contains(requiredType)) {
+                    acceptVariant = false;
+                    break;
+                }
+            }
+            if (acceptVariant) {
+                upperMenuVariants.push_back(variant);
             }
         }
-    } else {
-        if (targetConfig->second.contains(commonSrcType)) {
-            upperMenuVariants = targetConfig->second.find(commonSrcType)->second;
-        } else if (commonSrcType != srcObjType::any && targetConfig->second.contains(srcObjType::any)) {
-            upperMenuVariants = targetConfig->second.find(srcObjType::any)->second;
-        } else {
-            log::debug("this combination is not supported");
-            return false;
-        } 
+
+        // bool haveCommonType = srcTypes.size() == 1;
+        // auto commonSrcType = haveCommonType ? *(srcTypes.begin()) : srcObjType::any;
+        // if (targetConfig.contains(commonSrcType)) {
+        //     upperMenuVariants = targetConfig.find(commonSrcType)->second;
+        // } else if (commonSrcType != srcObjType::any && targetConfig.contains(srcObjType::any)) {
+        //     upperMenuVariants = targetConfig.find(srcObjType::any)->second;
+        // } else {
+        //     log::debug("this combination is not supported");
+        //     return false;
+        // } 
     }
 
     { // create upper menu
-        if (upperMenuVariants.size() == 0) {
+        if (!upperMenuVariants.size()) {
+            log::debug("this combination is not supported");
             resetTool();
             return false;
         }
-        createUpperMenu(upperMenuVariants, true, commonSrcType);
+        createUpperMenu(upperMenuVariants, true, commonTypes);
         auto upperMenu = m_fields->m_upperMenu;
         m_fields->m_drawingLayer->addChild(upperMenu);
         upperMenu->setPosition(targetObj->getPosition() + ccp(5, 15));
     }
     return true;
 }
-
 
 void MyEditorUI::applyToolConfig() {
     if (!m_fields->m_globalConfig.m_isFinished) return;
@@ -121,6 +182,9 @@ void MyEditorUI::applyToolConfig() {
             addToGroupAnim(group, objectsSource);
             break;
         }
+        case sourceFuncType::addGrCol: 
+            addToGroup(group, objectsSource);
+            // no break
         case sourceFuncType::color: {
             // deselect source objects to be able to preview color
             if (m_fields->m_modSettings.m_previewColor) {

@@ -1,23 +1,34 @@
 #include "EditorUI.hpp"
 
-srcObjType MyEditorUI::getTypeById(short objId) {
+std::set<srcObjType> MyEditorUI::getTypesById(short objId) {
+    std::set<srcObjType> result;
     if (triggerIDs.contains(objId)) {
-        return srcObjType::trig;
-    } else if (animatedIDs.contains(objId)) {
-        return srcObjType::anim;
-    } else if (objId == keyFrameOjb) {
-        return srcObjType::keyFrame;
-    } else {
-        return srcObjType::any;
+        result.insert(srcObjType::trig);
+    } 
+    if (animatedIDs.contains(objId)) {
+        result.insert(srcObjType::anim);
     }
+    if (objId == keyFrameOjb) {
+        result.insert(srcObjType::keyFrame);
+    } 
+    result.insert(srcObjType::any);
+    return result;
 }
 
-CCArray * MyEditorUI::filterObjectsByType(srcObjType objType, CCArray * objects, bool color) {
+CCArray * MyEditorUI::filterObjectsByType(std::set<srcObjType> filteringTypes, CCArray * objects, bool color) {
     auto result = CCArray::create();
     for (unsigned i = 0; i < objects->count(); i++) {
         auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
-        auto type = getTypeById(obj->m_objectID);
-        if (objType == srcObjType::any || type == objType) {
+        auto objTypes = getTypesById(obj->m_objectID);
+        // to be accepted object must have all filtering types
+        bool accept = true;
+        for (auto &type : filteringTypes) {
+            if (!objTypes.contains(type)) {
+                accept = false;
+                break;
+            }
+        }
+        if (accept) {
             result->addObject(obj);
             if (color) obj->selectObject(ccc3(255, 0, 255));
         } else {
@@ -27,16 +38,15 @@ CCArray * MyEditorUI::filterObjectsByType(srcObjType objType, CCArray * objects,
     return result;
 }
 
-
-std::set<srcObjType> MyEditorUI::getObjectsAllTypes(CCArray * objects) {
-    std::set<srcObjType> presentTypes;
-    for (unsigned i = 0; i < objects->count(); i++) {
-        auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
-        auto type = getTypeById(obj->m_objectID);
-        presentTypes.insert(type);
-    }
-    return presentTypes;
-}
+// std::set<srcObjType> MyEditorUI::getObjectsAllTypes(CCArray * objects) {
+//     std::set<srcObjType> presentTypes;
+//     for (unsigned i = 0; i < objects->count(); i++) {
+//         auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
+//         auto types = getTypesById(obj->m_objectID);
+//         presentTypes.insert(types.begin(), types.end());
+//     }
+//     return presentTypes;
+// }
 
 std::vector<short> MyEditorUI::getObjectsCommonGroups(CCArray * objects) {
     if (objects->count() == 0) return {};
@@ -111,19 +121,14 @@ void MyEditorUI::myCopyObjectProps(GameObject * from, TWTObjCopy * to) {
         to->m_groups->fill(0);
     }
     to->m_groupCount = from->m_groupCount;
-    auto objType = getTypeById(from->m_objectID);
-    switch (objType) {
-        case srcObjType::trig: {
-            to->m_isSpawnTrigger = static_cast<EffectGameObject*>(from)->m_isSpawnTriggered;
-            to->m_isMultiTrigger = static_cast<EffectGameObject*>(from)->m_isMultiTriggered;
-            break;
-        }
-        case srcObjType::anim: {
-            to->m_isAnimOnTrigger = static_cast<EnhancedGameObject*>(from)->m_animateOnTrigger;
-            break;
-        }
-        default: break;
-    };    
+    auto objTypes = getTypesById(from->m_objectID);
+    if (objTypes.contains(srcObjType::trig)) {
+        to->m_isSpawnTrigger = static_cast<EffectGameObject*>(from)->m_isSpawnTriggered;
+        to->m_isMultiTrigger = static_cast<EffectGameObject*>(from)->m_isMultiTriggered;
+    }
+    if (objTypes.contains(srcObjType::anim)) {
+        to->m_isAnimOnTrigger = static_cast<EnhancedGameObject*>(from)->m_animateOnTrigger;
+    }  
 };
 
 void MyEditorUI::myPasteObjectProps(TWTObjCopy * from, GameObject * to) {
@@ -139,7 +144,6 @@ void MyEditorUI::myPasteObjectProps(TWTObjCopy * from, GameObject * to) {
     if (from->m_isAnimOnTrigger) {
         static_cast<EnhancedGameObject*>(to)->m_animateOnTrigger = *(from->m_isAnimOnTrigger);
     }
-
 }
 
 std::vector<int> MyEditorUI::getObjectsAllColors(CCArray * objects) {

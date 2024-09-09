@@ -19,7 +19,7 @@ void MyEditorUI::onMainButton(CCObject* sender) {
     }
 }
 
-void MyEditorUI::onInfoButton(CCObject*) {
+void MyEditorUI::onInfoButton(CCObject*) { // todo: change description
     FLAlertLayer::create(
         "Color Example",
         "text",

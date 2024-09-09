@@ -23,6 +23,7 @@ class $modify(MyEditorUI, EditorUI) {
         Variant m_variant; // is set in upper menu
         short m_group; // is set in lower menu
         bool m_isFinished = false; // if we've created both upper and lower menus
+        short m_nextFreeGroup;
     };
 
     struct ModSettings {
@@ -93,7 +94,7 @@ class $modify(MyEditorUI, EditorUI) {
 
     // MENUS
 
-    void createUpperMenu(const std::vector<Variant>& configuration, bool selectFirst, srcObjType commonType);
+    void createUpperMenu(const std::vector<Variant>& configuration, bool selectFirst, std::set<srcObjType> commonType);
     void upperMenuActionListener(CCObject * sender);
 
     void createLowerMenuForVariant(Variant variant);
@@ -108,9 +109,9 @@ class $modify(MyEditorUI, EditorUI) {
 
     // TOOL UTILS
 
-    srcObjType getTypeById(short objId);
-    std::set<srcObjType> getObjectsAllTypes(CCArray * objects);
-    CCArray * filterObjectsByType(srcObjType objType, CCArray * objects, bool color);
+    std::set<srcObjType> getTypesById(short objId);
+    // std::set<srcObjType> getObjectsAllTypes(CCArray * objects);
+    CCArray * filterObjectsByType(std::set<srcObjType> objType, CCArray * objects, bool color);
 
     std::vector<short> getObjectsCommonGroups(CCArray * objects);
     bool isNewGroupPossible(CCArray * objects);

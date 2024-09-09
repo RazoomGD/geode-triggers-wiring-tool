@@ -9,7 +9,7 @@ struct UpperMenuButtonParameters : public CCObject {
     }
 };
 
-void MyEditorUI::createUpperMenu(const std::vector<Variant>& configuration, bool selectFirst, srcObjType commonType) {
+void MyEditorUI::createUpperMenu(const std::vector<Variant>& configuration, bool selectFirst, std::set<srcObjType> commonType) {
     // remove old menu
     if (m_fields->m_upperMenu) m_fields->m_upperMenu->removeFromParent();
     // create new menu
@@ -26,8 +26,13 @@ void MyEditorUI::createUpperMenu(const std::vector<Variant>& configuration, bool
     // add buttons
     for (unsigned i = 0; i < configuration.size(); i++) {
         auto btnNode = CCNode::create();
-        std::string suffix = (configuration[i].m_srcObjType != commonType && 
-            configuration[i].m_srcObjType != srcObjType::any) ? "*" : "";
+        std::string suffix = ""; 
+        for (auto type : configuration[i].m_srcObjType) {
+            if (!commonType.contains(type)) {
+                suffix = "*";
+                break;
+            }
+        }
         auto label = CCLabelBMFont::create((configuration[i].m_name + suffix).c_str(), "bigFont.fnt");
         label->setScale(0.5f);
         label->setAnchorPoint(ccp(0, 0));
@@ -68,6 +73,12 @@ void MyEditorUI::upperMenuActionListener(CCObject * sender) {
         config.getLowerMenuType() != m_fields->m_globalConfig.m_variant.getLowerMenuType()) {
         // then we need new lower menu
         m_fields->m_globalConfig.m_variant = config;
+        // reset source objects
+        for (unsigned i = 0; i < m_fields->m_objectsSource->count(); i++) {
+            auto obj = static_cast<GameObject*>(m_fields->m_objectsSource->objectAtIndex(i));
+            auto objDefaultAttributes = static_cast<TWTObjCopy*>(m_fields->m_objectsSourceCopy->objectAtIndex(i));
+            myPasteObjectProps(objDefaultAttributes, obj); // restore initial groups
+        }
         createLowerMenuForVariant(config);
 
         auto lowerMenu = m_fields->m_lowerMenu;
@@ -104,7 +115,7 @@ void MyEditorUI::createLowerMenuForVariant(Variant variant) {
         case lowerMenuType::selectGroup: {
             auto newGroupPossible = isNewGroupPossible(filteredObjects);
             if (newGroupPossible) {
-                int nextFree = LevelEditorLayer::get()->getNextFreeGroupID(nullptr);
+                int nextFree = m_fields->m_globalConfig.m_nextFreeGroup;
                 lowerMenuConfig.push_back({std::format("next ({})", nextFree), nextFree});
                 // lowerMenuConfig.push_back({"next free", nextFree});
             }
@@ -143,6 +154,7 @@ void MyEditorUI::createLowerMenuForVariant(Variant variant) {
         default: break;
     }
     createLowerMenu(lowerMenuConfig, true);
+    log::debug("Created new lower menu");
 }
 
 void MyEditorUI::createLowerMenu(const std::vector<std::pair<std::string, int>>& configuration, bool selectFirst) {
