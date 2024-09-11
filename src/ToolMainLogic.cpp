@@ -62,71 +62,38 @@ bool MyEditorUI::handleTargetObject() {
     auto targetConfig = CONFIGURATION.find(targetObj->m_objectID)->second;
     // get variants for upper menu
     std::vector<Variant> upperMenuVariants;
+    std::vector<Variant> anyUpperMenuVariants;
     if (m_fields->m_modSettings.m_smartFilter) {
-        std::vector<Variant> anyOnlyUpperMenuVariants;
         for (auto &variant : targetConfig) {
             // when common type is not only any we (by default) dont show "any-only" variants
             // we show them only when no other variants available
-            if (commonTypes.size() > 1 && variant.m_srcObjType == std::set{srcObjType::any}) {
-                anyOnlyUpperMenuVariants.push_back(variant);
+            if (commonTypes.size() > 1 && variant.m_srcObjType == srcObjType::any) {
+                anyUpperMenuVariants.push_back(variant);
                 continue;
             }
-            
             // if at least one object matches the variant, we accept this variant
             for (auto objId : srcObjIds) {
                 auto objTypes = getTypesById(objId);
-                // if (objTypes.size() > 1) objTypes.erase(srcObjType::any);
-                bool acceptVariant = true;
-                for (auto requiredType : variant.m_srcObjType) {
-                    if (!objTypes.contains(requiredType)) {
-                        acceptVariant = false;
-                        break;
-                    }
-                }
-                if (acceptVariant) {
+                if (objTypes.contains(variant.m_srcObjType)) {
                     upperMenuVariants.push_back(variant);
                     break;
                 }
             }  
         }
-        if (!upperMenuVariants.size()) {
-            upperMenuVariants = anyOnlyUpperMenuVariants;
-        }
-
-        // for (auto &type : srcTypes) {
-        //     if (targetConfig.contains(type)) {
-        //         auto targetSourceConfig = targetConfig.find(type)->second;
-        //         upperMenuVariants.insert(upperMenuVariants.end(), 
-        //             targetSourceConfig.begin(), targetSourceConfig.end());
-        //     }
-        // }
-        // if (!upperMenuVariants.size() && targetConfig.contains(srcObjType::any)) {
-        //     upperMenuVariants = targetConfig.find(srcObjType::any)->second;
-        // }
     } else {
-        for (auto &variant : targetConfig) { // todo: not tested yet
-            bool acceptVariant = true;
-            for (auto requiredType : variant.m_srcObjType) {
-                if (!commonTypes.contains(requiredType)) {
-                    acceptVariant = false;
-                    break;
-                }
+        for (auto &variant : targetConfig) {
+            if (commonTypes.size() > 1 && variant.m_srcObjType == srcObjType::any) {
+                anyUpperMenuVariants.push_back(variant);
+                continue;
             }
-            if (acceptVariant) {
+            if (commonTypes.contains(variant.m_srcObjType)) {
                 upperMenuVariants.push_back(variant);
             }
         }
+    }
 
-        // bool haveCommonType = srcTypes.size() == 1;
-        // auto commonSrcType = haveCommonType ? *(srcTypes.begin()) : srcObjType::any;
-        // if (targetConfig.contains(commonSrcType)) {
-        //     upperMenuVariants = targetConfig.find(commonSrcType)->second;
-        // } else if (commonSrcType != srcObjType::any && targetConfig.contains(srcObjType::any)) {
-        //     upperMenuVariants = targetConfig.find(srcObjType::any)->second;
-        // } else {
-        //     log::debug("this combination is not supported");
-        //     return false;
-        // } 
+    if (!upperMenuVariants.size()) {
+        upperMenuVariants = anyUpperMenuVariants;
     }
 
     { // create upper menu
@@ -196,6 +163,10 @@ void MyEditorUI::applyToolConfig() {
                 }
                 if (wereSelected) showDebugText("Color preview", 1);
             }
+            break;
+        }
+        case sourceFuncType::setItem: {
+            setItemId(group, objectsSource);
             break;
         }
         default: break;

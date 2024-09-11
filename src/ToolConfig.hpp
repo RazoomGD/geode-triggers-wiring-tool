@@ -14,6 +14,8 @@ enum srcObjType {
     trig,     // triggers
     anim,     // animated objects
     keyFrame, // keyframe
+    areaEffect, // area triggers
+    item,     // item
 };
 
 enum sourceFuncType {
@@ -22,11 +24,13 @@ enum sourceFuncType {
     addGrAnim, // add group + set animateOnTrigger
     addGrCol,  // exclusively for pulse trigger preview mode (does the same as addGr)
     color,     // does nothing to source objects
+    setItem,   // sets item id
 };
 
 enum lowerMenuType {
     selectGroup,
     selectColor,
+    selectItem,
 };
 
 // Triggers (basically every object you are able to set as spawn trigger & multi trigger)
@@ -51,13 +55,33 @@ const std::set<objId> animatedIDs = {
     1051, 1052, 921, 2894, 1858, 1856, 1839, 1840, 2024, 2025, 2036, 2037, 2048, 2049, 2869, 2870, 2881, 2882, 
     2893, 918, 1584, 2012
 };
+
+// objects (not triggers) that contain item id 
+const std::set<objId> itemIdContainingObjects = {
+    4402, 4414, 4426, 4438, 4450, 4462, 4474, 4486, 4497, 4508, 4520, 4532, 4532, 4538, 4523, 4537, 1587, 4403, 
+    4533, 4417, 4416, 4415, 4427, 4511, 4510, 4441, 4440, 4439, 4451, 4509, 4453, 4463, 4521, 4465, 4475, 4535, 
+    4477, 4487, 1275, 4404, 4405, 4428, 4429, 4452, 4464, 4476, 4488, 4498, 4499, 4522, 4534, 4500, 4491, 1589, 
+    4406, 4536, 4539, 4420, 4419, 4418, 4430, 4514, 4513, 4444, 4443, 4442, 4454, 4512, 4456, 4466, 4524, 4468, 
+    4478, 4480, 4489, 4526, 4407, 4408, 4431, 4432, 4455, 4467, 4479, 4490, 4501, 4502, 4525, 4524, 4539, 4503, 
+    4495, 1598, 4504, 3601, 4409, 4410, 4530, 4424, 4423, 4422, 4421, 4433, 4434, 4518, 4517, 4448, 4447, 4446, 
+    4445, 4457, 4459, 4516, 4460, 4469, 4470, 4515, 4472, 4481, 4482, 4527, 4484, 4492, 4493, 4528, 1614, 4411, 
+    4412, 4435, 4436, 4458, 4471, 4483, 4494, 4505, 4506, 4529, 4519, 4507, 4401, 4413, 4425, 4437, 4449, 4461, 
+    4473, 4485, 4496, 4531
+};
+
 // Beast, bat and spike-ball
 const std::set<objId> animatedSpecialIDs = {
     918, 1584, 2012
 };
 
-// Special objects (objects we process differently from triggers)
-const objId keyFrameOjb = 3032;
+// Area effect triggers (that have areaEffectId)
+const std::set<objId> areaEffectsIDs = { 
+    3006, 3007, 3008, 3009, 3010
+};
+
+// keyframe path object
+const objId keyFrameOjbID = 3032;
+const objId itemObjID = 1615;
 
 const std::map<int, std::string> colorIdName = {
     {1005, "Player-1"},
@@ -89,6 +113,7 @@ struct TWTObjCopy : public CCObject {
     std::optional<bool> m_isSpawnTrigger;
     std::optional<bool> m_isMultiTrigger;
     std::optional<bool> m_isAnimOnTrigger;
+    std::optional<int> m_itemID;
 };
 
 const struct Condition {
@@ -102,15 +127,16 @@ const struct Variant {
     std::string m_triggerConfigString;
     std::vector<Condition> m_triggerConditionalConfigString;
     sourceFuncType m_srcFuncType; // is used to create lower menu and apply the final config
-    std::set<srcObjType> m_srcObjType;
+    srcObjType m_srcObjType;
 
-    std::pair<lowerMenuType, std::set<srcObjType>> getLowerMenuType() {
+    std::pair<lowerMenuType, srcObjType> getLowerMenuType() {
         static const std::map<sourceFuncType, lowerMenuType> sourceFuncToMenuType = {
             {sourceFuncType::addGr, lowerMenuType::selectGroup},
             {sourceFuncType::addGrSM, lowerMenuType::selectGroup},
             {sourceFuncType::addGrAnim, lowerMenuType::selectGroup},
             {sourceFuncType::addGrCol, lowerMenuType::selectGroup},
             {sourceFuncType::color, lowerMenuType::selectColor},
+            {sourceFuncType::setItem, lowerMenuType::selectItem},
         };
         return {sourceFuncToMenuType.at(this->m_srcFuncType), this->m_srcObjType};
     }
@@ -118,105 +144,121 @@ const struct Variant {
 
 const std::map<objId, std::vector<Variant>> CONFIGURATION = {
     {899, { // color trigger
-        {"Color", "23,g", {}, sourceFuncType::color, {srcObjType::any}},
+        {"Color", "23,g", {}, sourceFuncType::color, srcObjType::any},
     }},
     {901, { // move trigger
-        {"Target", "51,g", {}, sourceFuncType::addGr, {srcObjType::any}},
-        {"Target_pos", "100,1,394,0,71,g", {{{"394", "1"}, "100,0,394,1"}}, sourceFuncType::addGr, {srcObjType::any}},
-        {"Center", "100,1,394,0,395,g", {{{"394", "1"}, "100,0,394,1"}}, sourceFuncType::addGr, {srcObjType::any}},
+        {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Target_pos", "100,1,394,0,71,g", {{{"394", "1"}, "100,0,394,1"}}, sourceFuncType::addGr, srcObjType::any},
+        {"Center", "100,1,394,0,395,g", {{{"394", "1"}, "100,0,394,1"}}, sourceFuncType::addGr, srcObjType::any},
     }},
     {1616, { // stop trigger
-        {"Target", "51,g", {}, sourceFuncType::addGr, {srcObjType::trig}},
+        {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::trig},
     }},
     {1006, { // pulse trigger
-        {"Color", "52,0,51,g", {}, sourceFuncType::color, {srcObjType::any}},
-        {"Group", "52,1,51,g", {}, sourceFuncType::addGrCol, {srcObjType::any}}, 
+        {"Color", "52,0,51,g", {}, sourceFuncType::color, srcObjType::any},
+        {"Group", "52,1,51,g", {}, sourceFuncType::addGrCol, srcObjType::any}, 
     }},
     {1007, { // alpha trigger
-        {"Group", "51,g", {}, sourceFuncType::addGr, {srcObjType::any}},
+        {"Group", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
     {1049, { // toggle trigger
-        {"Group", "51,g", {}, sourceFuncType::addGr, {srcObjType::any}},
+        {"Group", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
     {1268, { // spawn trigger
-        {"Group", "51,g", {}, sourceFuncType::addGrSM, {srcObjType::trig}},
+        {"Group", "51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
     }},
     {1346, { // rotate trigger
-        {"Target", "51,g", {}, sourceFuncType::addGr, {srcObjType::any}},
-        {"Center", "71,g", {}, sourceFuncType::addGr, {srcObjType::any}},
-        {"Rot_target", "100,1,401,g", {{{"394", "1"}, "100,0,394,1"}}, sourceFuncType::addGr, {srcObjType::any}},
+        {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Center", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Rot_target", "100,1,401,g", {{{"394", "1"}, "100,0,394,1"}}, sourceFuncType::addGr, srcObjType::any},
     }},
     {2067, { // scale trigger
-        {"Target", "51,g", {}, sourceFuncType::addGr, {srcObjType::any}},
-        {"Center", "71,g", {}, sourceFuncType::addGr, {srcObjType::any}},
+        {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Center", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
     {1347, { // follow trigger
-        {"Target", "51,g", {}, sourceFuncType::addGr, {srcObjType::any}},
-        {"Follow", "71,g", {}, sourceFuncType::addGr, {srcObjType::any}},
+        {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Follow", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
     {1585, { // animate trigger
-        {"Group", "51,g", {}, sourceFuncType::addGrAnim, {srcObjType::anim}},
+        {"Group", "51,g", {}, sourceFuncType::addGrAnim, srcObjType::anim},
     }},
     {3033, { // keyframe trigger
-        {"Animation", "76,g", {}, sourceFuncType::addGr, {srcObjType::keyFrame}},
-        {"Target", "51,g", {}, sourceFuncType::addGr, {srcObjType::any}},
-        {"Parent", "71,g", {}, sourceFuncType::addGr, {srcObjType::any}},
+        {"Animation", "76,g", {}, sourceFuncType::addGr, srcObjType::keyFrame},
+        {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Parent", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
     {1814, { // follow player Y trigger
-        {"Target", "51,g", {}, sourceFuncType::addGr, {srcObjType::any}},
+        {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
     {3016, { // advanced follow trigger
-        {"Target", "51,g", {}, sourceFuncType::addGr, {srcObjType::any}},
-        {"Follow", "71,g", {}, sourceFuncType::addGr, {srcObjType::any}},
+        {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Follow", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
     {3660, { // edit advanced follow trigger
-        {"Target", "51,g", {}, sourceFuncType::addGr, {srcObjType::any}},
+        {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
     {3661, { // re-target advanced follow trigger
-        {"Target", "51,g", {}, sourceFuncType::addGr, {srcObjType::any}},
-        {"Follow", "71,g", {}, sourceFuncType::addGr, {srcObjType::any}},
+        {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Follow", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
     {3032, { // keyframe object
-        {"Spawn", "71,g", {}, sourceFuncType::addGrSM, {srcObjType::trig}},
-        {"Target", "51,g", {}, sourceFuncType::addGr, {srcObjType::any}},
+        {"Spawn", "71,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
+        {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
     {3006, { // area move
-        {"Target", "51,g", {}, sourceFuncType::addGr, {srcObjType::any}},
-        {"Center", "71,g", {}, sourceFuncType::addGr, {srcObjType::any}},
+        {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Center", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
     {3007, { // area rotate
-        {"Target", "51,g", {}, sourceFuncType::addGr, {srcObjType::any}},
-        {"Center", "71,g", {}, sourceFuncType::addGr, {srcObjType::any}},
+        {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Center", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
     {3008, { // area scale
-        {"Target", "51,g", {}, sourceFuncType::addGr, {srcObjType::any}},
-        {"Center", "71,g", {}, sourceFuncType::addGr, {srcObjType::any}},
+        {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Center", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
     {3009, { // area fade
-        {"Target", "51,g", {}, sourceFuncType::addGr, {srcObjType::any}},
-        {"Center", "71,g", {}, sourceFuncType::addGr, {srcObjType::any}},
+        {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Center", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
     {3010, { // area tint
-        {"Target", "51,g", {}, sourceFuncType::addGr, {srcObjType::any}},
-        {"Center", "71,g", {}, sourceFuncType::addGr, {srcObjType::any}},
-        {"Color", "278,0,71,g", {}, sourceFuncType::color, {srcObjType::any}},
+        {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Center", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Color", "278,0,71,g", {}, sourceFuncType::color, srcObjType::any},
     }},
     {3011, { // edit area move
-        {"Group", "355,0,51,g", {}, sourceFuncType::addGr, {srcObjType::any}},
+        {"Group", "355,0,51,g", {}, sourceFuncType::addGr, srcObjType::areaEffect},
     }},
     {3012, { // edit area rotate
-        {"Group", "355,0,51,g", {}, sourceFuncType::addGr, {srcObjType::any}},
+        {"Group", "355,0,51,g", {}, sourceFuncType::addGr, srcObjType::areaEffect},
     }},
     {3013, { // edit area scale
-        {"Group", "355,0,51,g", {}, sourceFuncType::addGr, {srcObjType::any}},
+        {"Group", "355,0,51,g", {}, sourceFuncType::addGr, srcObjType::areaEffect},
     }},
+    {3014, { // edit area fade
+        {"Group", "355,0,51,g", {}, sourceFuncType::addGr, srcObjType::areaEffect},
+    }},
+    {3015, { // edit area tint
+        {"Group", "355,0,51,g", {}, sourceFuncType::addGr, srcObjType::areaEffect},
+    }},
+    {1595, { // touch trigger
+        {"Group", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+    }},
+    {1611, { // count trigger
+        {"Group", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Item", "80,g", {}, sourceFuncType::setItem, srcObjType::item},
+    }},
+    
 
 
 };
 
 /*
+1,1611,2,435,3,-135,36,1,51,222,80,111,77,333;
 
-1,3012,2,285,3,-75,36,1,222,-99,223,-99,220,-99,221,-99,252,-99,253,-99,218,-99,219,-99,237,-99,238,-99,239,-99,240,-99,243,2,249,2,231,-99,232,-99,288,-99,233,-99,234,-99,235,-99,236,-99,51,777,263,-99,264,-99,265,-99,285,-99,270,-99,271,-99,275,-99,286,-99,282,-99,10,0.5;
+
+
 
 
 */

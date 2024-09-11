@@ -26,13 +26,7 @@ void MyEditorUI::createUpperMenu(const std::vector<Variant>& configuration, bool
     // add buttons
     for (unsigned i = 0; i < configuration.size(); i++) {
         auto btnNode = CCNode::create();
-        std::string suffix = ""; 
-        for (auto type : configuration[i].m_srcObjType) {
-            if (!commonType.contains(type)) {
-                suffix = "*";
-                break;
-            }
-        }
+        std::string suffix = commonType.contains(configuration[i].m_srcObjType) ? "" : "*"; 
         auto label = CCLabelBMFont::create((configuration[i].m_name + suffix).c_str(), "bigFont.fnt");
         label->setScale(0.5f);
         label->setAnchorPoint(ccp(0, 0));
@@ -148,6 +142,19 @@ void MyEditorUI::createLowerMenuForVariant(Variant variant) {
                 if (colorIdName.contains(col)) lowerMenuConfig.push_back({colorIdName.at(col), col});
                 else if (col != 0) lowerMenuConfig.push_back({std::format("col {}", col), col});
             }
+            lowerMenuConfig.push_back({"None", -1});
+            break;
+        }
+        case lowerMenuType::selectItem: {
+            auto allItemIds = getItemsAllIds(filteredObjects);
+            auto nextFreeItem = m_fields->m_modSettings.m_fixedNextFreeItem ?
+                getNextFreeItemFixed() : LevelEditorLayer::get()->getNextFreeItemID(nullptr);
+            for (unsigned i = 0; i < allItemIds.size(); i++) {
+                if (allItemIds.at(i)) {
+                    lowerMenuConfig.push_back({std::format("item {}", allItemIds.at(i)), allItemIds.at(i)});
+                }
+            }
+            lowerMenuConfig.push_back({std::format("next ({})", nextFreeItem), nextFreeItem});
             lowerMenuConfig.push_back({"None", -1});
             break;
         }

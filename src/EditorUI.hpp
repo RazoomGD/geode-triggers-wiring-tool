@@ -30,6 +30,7 @@ class $modify(MyEditorUI, EditorUI) {
         bool m_previewColor = false;
         bool m_ctrlModifierEnabled = false;
         bool m_smartFilter = false;
+        bool m_fixedNextFreeItem = true;
     };
 
     enum Mode {
@@ -111,19 +112,23 @@ class $modify(MyEditorUI, EditorUI) {
 
     std::set<srcObjType> getTypesById(short objId);
     // std::set<srcObjType> getObjectsAllTypes(CCArray * objects);
-    CCArray * filterObjectsByType(std::set<srcObjType> objType, CCArray * objects, bool color);
+    CCArray * filterObjectsByType(srcObjType objType, CCArray * objects, bool color);
 
     std::vector<short> getObjectsCommonGroups(CCArray * objects);
     bool isNewGroupPossible(CCArray * objects);
     void addToGroup(int group, CCArray * objects);
     void addToGroupSM(int group, CCArray * objects);
     void addToGroupAnim(int group, CCArray * objects);
+    void setItemId(int id, CCArray * objects);
     void myCopyObjectProps(GameObject * from, TWTObjCopy * to);
     void myPasteObjectProps(TWTObjCopy * from, GameObject * to);
 
     std::vector<int> getObjectsAllColors(CCArray * objects);
+    std::vector<int> getItemsAllIds(CCArray * objects);
     std::optional<int> getCommonBaseColor(CCArray * objects);
     std::optional<int> getCommonDetailColor(CCArray * objects);
+
+    int getNextFreeItemFixed();
 
     std::map<std::string, std::string> objectToKeyVal(std::string objSaveString);
     std::string applyDifference(std::string before, std::string after, std::string obj);

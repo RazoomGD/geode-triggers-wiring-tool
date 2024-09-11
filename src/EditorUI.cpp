@@ -5,6 +5,7 @@ bool MyEditorUI::init(LevelEditorLayer * layer) {
     // init mod settings
     m_fields->m_modSettings.m_previewColor =  Mod::get()->getSettingValue<bool>("preview-color");
     m_fields->m_modSettings.m_smartFilter =  Mod::get()->getSettingValue<bool>("smart-filter");
+    m_fields->m_modSettings.m_fixedNextFreeItem =  Mod::get()->getSettingValue<bool>("fix-next-item-id");
     #ifdef GEODE_IS_WINDOWS
         m_fields->m_modSettings.m_ctrlModifierEnabled = Mod::get()->getSettingValue<bool>("control-key-modifier");
     #endif

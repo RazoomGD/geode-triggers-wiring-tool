@@ -48,7 +48,13 @@
 			"type": "bool",
 			"default": false,
 			"name": "Smart Filter",
-			"description": "todo: description."
+			"description": "Ok, this is a bit complex thing (that's why it's disabled by default). But it is actually really <cy>powerful</c>. Let's say you've selected a bunch of blocks and triggers. By default if you connect them to the (let's say) spawn trigger, no options will be offered to you (because you can't \"spawn\" the blocks - you can only spawn the triggers). But when the <cg>Smart Filter</c> is enabled you will be offered an options as when selecting only triggers. These options will appear in the menu with the <cy>*</c> sign at the end. Additionally only filtered objects will keep their <cp>pink selection</c> and the tool will be applied exclusively to them."
+		},
+        "fix-next-item-id" : {
+			"type": "bool",
+			"default": true,
+			"name": "Fix getNextFreeItemID() behavior",
+			"description": "Robtop's implementation of <cg>getNextFreeItemID()</c> function does not take into account item IDs inside the count triggers, instant count triggers, edit item triggers and even inside the items themselves:) So I made a fixed version of it which resolves this issue. \nThis is enabled using this setting. \n(Note: this change will be exclusive for Triggers Wiring Tool)"
 		}
 	},
 	"resources": {

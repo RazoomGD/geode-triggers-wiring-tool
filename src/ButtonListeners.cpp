@@ -20,11 +20,19 @@ void MyEditorUI::onMainButton(CCObject* sender) {
 }
 
 void MyEditorUI::onInfoButton(CCObject*) { // todo: change description
+    int id = getNextFreeItemFixed();    
     FLAlertLayer::create(
         "Color Example",
-        "text",
+        std::format("next id = {}", id),
         "OK"
     )->show();
+    // auto obj = static_cast<LabelGameObject*>(EditorUI::getSelectedObjects()->objectAtIndex(0));
+    // auto num = LevelEditorLayer::get()->getNextFreeItemID(nullptr);
+    // getItemsAllIds(EditorUI::getSelectedObjects());
+    // log::debug("item id = {}", obj->m_itemID);
+    // log::debug("is pickup = {}", obj->m_collectibleIsPickupItem);
+    // log::debug("item id 2 = {}", obj->m_itemID2);
+
 }
 
 void MyEditorUI::onModeChanged(CCObject* sender) {

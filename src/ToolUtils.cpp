@@ -8,27 +8,25 @@ std::set<srcObjType> MyEditorUI::getTypesById(short objId) {
     if (animatedIDs.contains(objId)) {
         result.insert(srcObjType::anim);
     }
-    if (objId == keyFrameOjb) {
+    if (objId == keyFrameOjbID) {
         result.insert(srcObjType::keyFrame);
     } 
+    if (objId == itemObjID) {
+        result.insert(srcObjType::item);
+    } 
+    if (areaEffectsIDs.contains(objId)) {
+        result.insert(srcObjType::areaEffect);
+    }
     result.insert(srcObjType::any);
     return result;
 }
 
-CCArray * MyEditorUI::filterObjectsByType(std::set<srcObjType> filteringTypes, CCArray * objects, bool color) {
+CCArray * MyEditorUI::filterObjectsByType(srcObjType filteringType, CCArray * objects, bool color) {
     auto result = CCArray::create();
     for (unsigned i = 0; i < objects->count(); i++) {
         auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
         auto objTypes = getTypesById(obj->m_objectID);
-        // to be accepted object must have all filtering types
-        bool accept = true;
-        for (auto &type : filteringTypes) {
-            if (!objTypes.contains(type)) {
-                accept = false;
-                break;
-            }
-        }
-        if (accept) {
+        if (objTypes.contains(filteringType)) {
             result->addObject(obj);
             if (color) obj->selectObject(ccc3(255, 0, 255));
         } else {
@@ -37,16 +35,6 @@ CCArray * MyEditorUI::filterObjectsByType(std::set<srcObjType> filteringTypes, C
     }
     return result;
 }
-
-// std::set<srcObjType> MyEditorUI::getObjectsAllTypes(CCArray * objects) {
-//     std::set<srcObjType> presentTypes;
-//     for (unsigned i = 0; i < objects->count(); i++) {
-//         auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
-//         auto types = getTypesById(obj->m_objectID);
-//         presentTypes.insert(types.begin(), types.end());
-//     }
-//     return presentTypes;
-// }
 
 std::vector<short> MyEditorUI::getObjectsCommonGroups(CCArray * objects) {
     if (objects->count() == 0) return {};
@@ -113,6 +101,15 @@ void MyEditorUI::addToGroupAnim(int group, CCArray * objects) {
     }
 };
 
+void MyEditorUI::setItemId(int id, CCArray * objects) {
+    for (unsigned i = 0; i < objects->count(); i++) {
+        auto obj = static_cast<EffectGameObject*>(objects->objectAtIndex(i));
+        obj->m_itemID = id;
+        static_cast<CCLabelBMFont*>(obj->getChildren()->objectAtIndex(0))
+            ->setString((std::format("C:{}", id).c_str()));
+    }
+}
+
 // copy 1)groups todo: 2)spawn, multi trigger, itemID, animate on trigger
 void MyEditorUI::myCopyObjectProps(GameObject * from, TWTObjCopy * to) {
     if (from->m_groups) {
@@ -122,19 +119,24 @@ void MyEditorUI::myCopyObjectProps(GameObject * from, TWTObjCopy * to) {
     }
     to->m_groupCount = from->m_groupCount;
     auto objTypes = getTypesById(from->m_objectID);
+    // optional values
     if (objTypes.contains(srcObjType::trig)) {
         to->m_isSpawnTrigger = static_cast<EffectGameObject*>(from)->m_isSpawnTriggered;
         to->m_isMultiTrigger = static_cast<EffectGameObject*>(from)->m_isMultiTriggered;
     }
     if (objTypes.contains(srcObjType::anim)) {
         to->m_isAnimOnTrigger = static_cast<EnhancedGameObject*>(from)->m_animateOnTrigger;
-    }  
+    }
+    if (objTypes.contains(srcObjType::item)) {
+        to->m_itemID = static_cast<EffectGameObject*>(from)->m_itemID;
+    }
 };
 
 void MyEditorUI::myPasteObjectProps(TWTObjCopy * from, GameObject * to) {
     if (!to->m_groups) to->addToGroup(1);
     std::memcpy(to->m_groups, from->m_groups, sizeof(short) * 10);
     to->m_groupCount = from->m_groupCount;
+    // optional values
     if (from->m_isSpawnTrigger) {
         static_cast<EffectGameObject*>(to)->m_isSpawnTriggered = *(from->m_isSpawnTrigger);
     }
@@ -143,6 +145,11 @@ void MyEditorUI::myPasteObjectProps(TWTObjCopy * from, GameObject * to) {
     }
     if (from->m_isAnimOnTrigger) {
         static_cast<EnhancedGameObject*>(to)->m_animateOnTrigger = *(from->m_isAnimOnTrigger);
+    }
+    if (from->m_itemID) {
+        static_cast<EffectGameObject*>(to)->m_itemID = *(from->m_itemID);
+        static_cast<CCLabelBMFont*>(to->getChildren()->objectAtIndex(0))
+            ->setString((std::format("C:{}", *(from->m_itemID)).c_str()));
     }
 }
 
@@ -162,6 +169,18 @@ std::vector<int> MyEditorUI::getObjectsAllColors(CCArray * objects) {
         }
     }
     return std::vector<int>(colorIds.begin(), colorIds.end());
+};
+
+std::vector<int> MyEditorUI::getItemsAllIds(CCArray * objects) {
+    std::set<int> itemIds;
+    for (unsigned i = 0; i < objects->count(); i++) {
+        auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
+        if (obj->m_objectID != itemObjID) continue;
+        auto item = static_cast<EffectGameObject*>(objects->objectAtIndex(i));
+        itemIds.insert(item->m_itemID);
+        log::debug("found item {}", item->m_itemID);
+    }
+    return std::vector<int>(itemIds.begin(), itemIds.end());
 };
 
 std::optional<int> MyEditorUI::getCommonBaseColor(CCArray * objects) {
@@ -197,6 +216,59 @@ std::optional<int> MyEditorUI::getCommonDetailColor(CCArray * objects) {
     if (commonDetailCol == -1) return {};
     return commonDetailCol;
 };
+
+int MyEditorUI::getNextFreeItemFixed() {
+    // Robtop's function is broken. This one is slow but at least works
+    auto levelLayer = LevelEditorLayer::get();
+    auto objects = levelLayer->m_objects;
+    std::set<short> itemIds;
+    for (unsigned i = 0; i < objects->count(); i++) {
+        auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
+        if (itemIdContainingObjects.contains(obj->m_objectID)) {
+            auto effectObj = static_cast<EffectGameObject*>(obj);
+            if (effectObj->m_itemID > 0 && effectObj->m_collectibleIsPickupItem) {
+                itemIds.insert(effectObj->m_itemID);
+            }
+        } else {
+            auto kvObject = objectToKeyVal(obj->getSaveString(nullptr));
+            switch (obj->m_objectID) {
+                case 1817:   // pickup trigger
+                case 1611:   // count trigger 
+                case 1811:   // instant count trigger 
+                case 3641:   // persist trigger
+                case 3617:   // time control trigger
+                case 3615:   // time event trigger
+                case 3614:   // time trigger
+                case 1615: { // item itself
+                    if (kvObject.contains("80")) itemIds.insert(std::stoi(kvObject["80"]));
+                    break;
+                };
+                case 3619: { // edit item trigger
+                    if (kvObject.contains("80") && kvObject.contains("476") && kvObject["476"] == "1") 
+                        itemIds.insert(std::stoi(kvObject["80"]));
+                    if (kvObject.contains("95") && kvObject.contains("477") && kvObject["477"] == "1") 
+                        itemIds.insert(std::stoi(kvObject["95"]));
+                    if (kvObject.contains("51") && kvObject.contains("478") && kvObject["478"] == "1") 
+                        itemIds.insert(std::stoi(kvObject["51"]));
+                    break;
+                };
+                case 3620: { // compare item trigger
+                    if (kvObject.contains("80")) itemIds.insert(std::stoi(kvObject["80"]));
+                    if (kvObject.contains("95") && kvObject.contains("477") && kvObject["477"] == "1") 
+                        itemIds.insert(std::stoi(kvObject["95"]));
+                    break;
+                };
+                default: break;
+            }
+        }
+    }
+    int current = 1;
+    while (itemIds.contains(current)) {
+        current++;
+    }
+    return current;
+}
+
 
 std::map<std::string, std::string> MyEditorUI::objectToKeyVal(std::string objSaveString) {
     std::stringstream ss(objSaveString);
