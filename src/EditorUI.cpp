@@ -3,11 +3,11 @@
 bool MyEditorUI::init(LevelEditorLayer * layer) {
     if (!EditorUI::init(layer)) return false;
     // init mod settings
-    m_fields->m_modSettings.m_previewColor =  Mod::get()->getSettingValue<bool>("preview-color");
-    m_fields->m_modSettings.m_smartFilter =  Mod::get()->getSettingValue<bool>("smart-filter");
-    m_fields->m_modSettings.m_fixedNextFreeItem =  Mod::get()->getSettingValue<bool>("fix-next-item-id");
+    m_fields->m_modSettings.m_previewColor =  Mod::get()->template  getSettingValue<bool>("preview-color");
+    m_fields->m_modSettings.m_smartFilter =  Mod::get()->template getSettingValue<bool>("smart-filter");
+    m_fields->m_modSettings.m_fixedNextFreeItem =  Mod::get()->template getSettingValue<bool>("fix-next-item-id");
     #ifdef GEODE_IS_WINDOWS
-        m_fields->m_modSettings.m_ctrlModifierEnabled = Mod::get()->getSettingValue<bool>("control-key-modifier");
+        m_fields->m_modSettings.m_ctrlModifierEnabled = Mod::get()->template getSettingValue<bool>("control-key-modifier");
     #endif
     initButtons();
     setKeybinds();
@@ -51,5 +51,31 @@ void MyEditorUI::ccTouchEnded(CCTouch * touch, CCEvent * event) {
         if (m_fields->m_interfaceIsVisible && !m_fields->m_objectTarget) {
             resetTool();
         }
+    }
+}
+
+void MyEditorUI::undoLastAction(CCObject * p0) {
+    auto levelLayer = LevelEditorLayer::get();
+    if (!levelLayer->m_undoObjects->count()) return;
+    auto lastUndo = static_cast<UndoObject*>(levelLayer->m_undoObjects->lastObject());
+    auto& undo = m_fields->m_undoTwiceObjUIDs;
+    EditorUI::undoLastAction(p0);
+    if (levelLayer->m_undoObjects->count() && 
+        std::find(undo.begin(), undo.end(), lastUndo->m_uID) != undo.end()) {
+        MyEditorUI::undoLastAction(p0);
+        log::debug("undone 2 times");
+    }
+}
+
+void MyEditorUI::redoLastAction(CCObject * p0) {
+    auto levelLayer = LevelEditorLayer::get();
+    if (!levelLayer->m_redoObjects->count()) return;
+    auto lastRedo = static_cast<UndoObject*>(levelLayer->m_redoObjects->lastObject());
+    auto& redo = m_fields->m_redoTwiceObjUIDs;
+    EditorUI::redoLastAction(p0);
+    if (levelLayer->m_redoObjects->count() && 
+        std::find(redo.begin(), redo.end(), lastRedo->m_uID) != redo.end()) {
+        MyEditorUI::redoLastAction(p0);
+        log::debug("redone 2 times");
     }
 }

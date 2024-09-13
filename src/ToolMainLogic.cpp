@@ -182,7 +182,22 @@ void MyEditorUI::applyToolConfig() {
                 targetStr.replace(pos, 1, std::to_string(group));
             } else break;
         }
-        modifiedTargetObject = std::format("{},{}", initialTargetObject, targetStr);
+        if (!m_fields->m_globalConfig.m_variant.appendNotOverride) {
+            modifiedTargetObject = std::format("{},{}", initialTargetObject, targetStr);
+        } else {
+            auto kvConfigStr = objectToKeyVal(targetStr);
+            auto kvObject = objectToKeyVal(initialTargetObject);
+            modifiedTargetObject = "1,1";
+            for (auto kv : kvObject) {
+                auto key = kv.first;
+                auto val = kv.second + (kvConfigStr.contains(key) ? "." + kvConfigStr[key] : "");
+                kvConfigStr.erase(key);
+                modifiedTargetObject = std::format("{},{},{}", modifiedTargetObject, key, val);
+            }
+            for (auto kv: kvConfigStr) {
+                modifiedTargetObject = std::format("{},{},{}", modifiedTargetObject, kv.first, kv.second);
+            }
+        }
         // conditional config
         auto objKeyVal = objectToKeyVal(initialTargetObject);
         for (unsigned i = 0; i < conditionalTargetStr.size(); i++) {
@@ -213,10 +228,20 @@ void MyEditorUI::applyToolConfig() {
     EditorUI::onDeleteSelected(nullptr);
     m_fields->m_objectTarget = newObj;
 
-    levelLayer->m_undoObjects->removeLastObject();
+    { // fix undo-redo behaviour
+        auto newUndo = UndoObject::createWithArray(objArray, UndoCommand::Paste);
+        auto& undo = m_fields->m_undoTwiceObjUIDs;
+        auto& redo = m_fields->m_redoTwiceObjUIDs;
+        undo.push_front(newUndo->m_uID);
+        redo.push_front(levelLayer->m_undoObjects->lastObject()->m_uID);
+        levelLayer->m_undoObjects->addObject(newUndo);
+        auto maxUndoRedo = levelLayer->m_increaseMaxUndoRedo ? 1000 : 200;
+        if (undo.size() > maxUndoRedo) undo.pop_back();
+        if (redo.size() > maxUndoRedo) redo.pop_back();
+    }
     
     m_fields->m_objectTargetLastUse = newObj->getSaveString(nullptr);
     EditorUI::selectObject(newObj, true);
-    EditorUI::updateButtons();
+    EditorUI::updateButtons(); 
 }
 

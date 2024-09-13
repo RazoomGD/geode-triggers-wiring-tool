@@ -14,8 +14,20 @@ std::set<srcObjType> MyEditorUI::getTypesById(short objId) {
     if (objId == itemObjID) {
         result.insert(srcObjType::item);
     } 
+    if (objId == particleObjID) {
+        result.insert(srcObjType::particle);
+    }
+    if (objId == sfxTriggerObjID) {
+        result.insert(srcObjType::particle);
+    }
+    if (objId == collisionBlockID) {
+        result.insert(srcObjType::collision);
+    }
     if (areaEffectsIDs.contains(objId)) {
         result.insert(srcObjType::areaEffect);
+    }
+    if (collectableIDs.contains(objId)) {
+        result.insert(srcObjType::collectable);
     }
     result.insert(srcObjType::any);
     return result;
@@ -264,6 +276,25 @@ int MyEditorUI::getNextFreeItemFixed() {
     }
     int current = 1;
     while (itemIds.contains(current)) {
+        current++;
+    }
+    return current;
+}
+
+// original function was inlined (0x89e40)
+int MyEditorUI::getNextFreeBlock() {
+    auto levelLayer = LevelEditorLayer::get();
+    auto objects = levelLayer->m_objects;
+    std::set<short> blockIds;
+    for (unsigned i = 0; i < objects->count(); i++) {
+        auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
+        if (obj->m_objectID == collisionBlockID) {
+            auto blockId = static_cast<EffectGameObject*>(obj)->m_itemID;
+            blockIds.insert(blockId);
+        }
+    }
+    int current = 1;
+    while (blockIds.contains(current)) {
         current++;
     }
     return current;

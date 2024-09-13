@@ -76,7 +76,7 @@ void MyEditorUI::initButtons() {
     m_fields->m_button = largeBtn;
     auto twtMenu = CCMenu::create();
     // info button
-    if (!Mod::get()->getSettingValue<bool>("hide-info-button")) {
+    if (!Mod::get()->template getSettingValue<bool>("hide-info-button")) { 
         auto smallBtn = CCMenuItemSpriteExtra::create(
             CCSprite::createWithSpriteFrameName("GJ_infoIcon_001.png"), this,
             menu_selector(MyEditorUI::onInfoButton));

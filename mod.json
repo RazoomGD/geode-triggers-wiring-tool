@@ -1,5 +1,5 @@
 {
-	"geode": "3.4.0",
+	"geode": "3.6.1",
 	"gd": {
 		"win": "2.206",
 		"android": "2.206",
@@ -54,7 +54,7 @@
 			"type": "bool",
 			"default": true,
 			"name": "Fix getNextFreeItemID() behavior",
-			"description": "Robtop's implementation of <cg>getNextFreeItemID()</c> function does not take into account item IDs inside the count triggers, instant count triggers, edit item triggers and even inside the items themselves:) So I made a fixed version of it which resolves this issue. \nThis is enabled using this setting. \n(Note: this change will be exclusive for Triggers Wiring Tool)"
+			"description": "Robtop's implementation of <cg>getNextFreeItemID()</c> function does not take into account item IDs in the count triggers, instant count triggers, edit item triggers and even items themselves:) So I've made a fixed version of it which resolves this issue. \nThis is enabled using this setting. \n(Note: this change will be exclusive for Triggers Wiring Tool)"
 		}
 	},
 	"resources": {

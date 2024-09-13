@@ -2,11 +2,14 @@
 
 #include <Geode/Geode.hpp>
 #include <Geode/modify/EditorUI.hpp>
+#include <Geode/loader/SettingV3.hpp>
+#include <Geode/loader/Mod.hpp>
 
 #include <utility>
 #include <sstream>
 #include <optional>
 #include <cstring>
+#include <deque>
 
 #ifdef GEODE_IS_WINDOWS
 #include <geode.custom-keybinds/include/Keybinds.hpp>
@@ -59,6 +62,8 @@ class $modify(MyEditorUI, EditorUI) {
         bool m_interfaceIsVisible = false;
         bool m_panEditor = false;
         ToolConfig m_globalConfig;
+        std::deque<unsigned> m_undoTwiceObjUIDs; // for correct work of undo and redo with the tool
+        std::deque<unsigned> m_redoTwiceObjUIDs;
         // for preview mode
     };
 
@@ -86,6 +91,8 @@ class $modify(MyEditorUI, EditorUI) {
     $override bool ccTouchBegan(CCTouch * touch, CCEvent * event);
     $override void ccTouchMoved(CCTouch * touch, CCEvent * event);
     $override void ccTouchEnded(CCTouch * touch, CCEvent * event);
+    $override void undoLastAction(CCObject * p0);
+    $override void redoLastAction(CCObject * p0);
 
     // TOOL TOUCH LOGIC
 
@@ -129,6 +136,7 @@ class $modify(MyEditorUI, EditorUI) {
     std::optional<int> getCommonDetailColor(CCArray * objects);
 
     int getNextFreeItemFixed();
+    int getNextFreeBlock();
 
     std::map<std::string, std::string> objectToKeyVal(std::string objSaveString);
     std::string applyDifference(std::string before, std::string after, std::string obj);

@@ -10,12 +10,16 @@ using objId = short;
 
 // todo: effect id support
 enum srcObjType {
-    any,      // anything (objects)
-    trig,     // triggers
-    anim,     // animated objects
-    keyFrame, // keyframe
-    areaEffect, // area triggers
-    item,     // item
+    any,         // anything (objects)
+    trig,        // triggers
+    anim,        // animated objects
+    keyFrame,    // keyframe
+    areaEffect,  // area triggers
+    item,        // item
+    particle,    // particle generator
+    collectable, // also resetable
+    sfxTrig,     // sfx trigger
+    collision,   // collision block
 };
 
 enum sourceFuncType {
@@ -69,12 +73,25 @@ const std::set<objId> itemIdContainingObjects = {
     4473, 4485, 4496, 4531
 };
 
+// collectable (resetable)
+const std::set<objId> collectableIDs = {
+    2063, 1275, 4402, 4403, 4415, 4414, 4426, 4427, 4439, 4438, 4450, 4451, 4462, 4463, 4474, 4475, 4486, 4487, 
+    4497, 4537, 4509, 4508, 4520, 4521, 4532, 4533, 4532, 1587, 1589, 4404, 4405, 4406, 4407, 4419, 4418, 4417, 
+    4416, 4428, 4429, 4430, 4431, 4443, 4442, 4441, 4440, 4452, 4453, 4454, 4455, 4464, 4465, 4466, 4467, 4476, 
+    4477, 4478, 4479, 4488, 4538, 4489, 4490, 4498, 4499, 4500, 4501, 4513, 4512, 4511, 4510, 4522, 4523, 4524, 
+    4525, 4534, 4535, 4536, 4539, 4524, 4539, 1598, 4408, 4409, 4410, 4422, 4421, 4420, 4432, 4433, 4434, 4446, 
+    4445, 4444, 4456, 4457, 4458, 4468, 4469, 4470, 4480, 4481, 4482, 4491, 4492, 4493, 4502, 4503, 4504, 4516, 
+    4515, 4514, 4526, 4527, 4528, 1614, 3601, 4401, 4411, 4412, 4413, 4425, 4424, 4423, 4435, 4436, 4437, 4449, 
+    4448, 4447, 4459, 4460, 4461, 4471, 4472, 4473, 4483, 4484, 4485, 4494, 4495, 4496, 4505, 4506, 4507, 4519, 
+    4518, 4517, 4529, 4530, 4531
+};
+
 // Beast, bat and spike-ball
 const std::set<objId> animatedSpecialIDs = {
     918, 1584, 2012
 };
 
-// Area effect triggers (that have areaEffectId)
+// Area effect triggers (that contain areaEffectId)
 const std::set<objId> areaEffectsIDs = { 
     3006, 3007, 3008, 3009, 3010
 };
@@ -82,6 +99,9 @@ const std::set<objId> areaEffectsIDs = {
 // keyframe path object
 const objId keyFrameOjbID = 3032;
 const objId itemObjID = 1615;
+const objId particleObjID = 2065;
+const objId sfxTriggerObjID = 3602;
+const objId collisionBlockID = 1816;
 
 const std::map<int, std::string> colorIdName = {
     {1005, "Player-1"},
@@ -128,6 +148,7 @@ const struct Variant {
     std::vector<Condition> m_triggerConditionalConfigString;
     sourceFuncType m_srcFuncType; // is used to create lower menu and apply the final config
     srcObjType m_srcObjType;
+    bool appendNotOverride = false;
 
     std::pair<lowerMenuType, srcObjType> getLowerMenuType() {
         static const std::map<sourceFuncType, lowerMenuType> sourceFuncToMenuType = {
@@ -243,22 +264,105 @@ const std::map<objId, std::vector<Variant>> CONFIGURATION = {
         {"Group", "355,0,51,g", {}, sourceFuncType::addGr, srcObjType::areaEffect},
     }},
     {1595, { // touch trigger
-        {"Group", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Triggers", "82,1,51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
+        {"Objects", "82,0,51,g", {{{"82", "1"}, "82,1"}, {{"82", "2"}, "82,2"}}, sourceFuncType::addGr, srcObjType::any},
     }},
     {1611, { // count trigger
+        {"Triggers", "56,1,51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
+        {"Objects", "56,0,51,g", {{{{"56", "1"}, "56,1"}}}, sourceFuncType::addGr, srcObjType::any}, 
+        {"Item", "80,g", {}, sourceFuncType::setItem, srcObjType::item},
+    }},
+    {1811, { // instant count trigger
+        {"Triggers", "56,1,51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
+        {"Objects", "56,0,51,g", {{{{"56", "1"}, "56,1"}}}, sourceFuncType::addGr, srcObjType::any},
+        {"Item", "80,g", {}, sourceFuncType::setItem, srcObjType::item},
+    }},
+    {1817, { // pickup trigger
+        {"Item", "80,g", {}, sourceFuncType::setItem, srcObjType::item},
+    }},
+    {3614, { // time trigger
         {"Group", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
         {"Item", "80,g", {}, sourceFuncType::setItem, srcObjType::item},
     }},
-    
+    {3615, { // time event trigger
+        {"Group", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Item", "80,g", {}, sourceFuncType::setItem, srcObjType::item},
+    }},
+    {3617, { // time control trigger
+        {"Item", "80,g", {}, sourceFuncType::setItem, srcObjType::item},
+    }},
+    {3619, { // item edit trigger
+        {"Target", "478,1,51,g", {}, sourceFuncType::setItem, srcObjType::item},
+        {"Item_2", "477,1,95,g", {}, sourceFuncType::setItem, srcObjType::item},
+        {"Item_1", "476,1,80,g", {}, sourceFuncType::setItem, srcObjType::item},
+    }},
+    {3620, { // item compare trigger
+        {"Item_2", "477,1,95,g", {}, sourceFuncType::setItem, srcObjType::item},
+        {"Item_1", "476,1,80,g", {}, sourceFuncType::setItem, srcObjType::item},
+        {"On_false", "71,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
+        {"On_true", "51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
+    }},
+    {3641, { // item persist trigger
+        {"Item", "80,g", {}, sourceFuncType::setItem, srcObjType::item},
+    }},
+    {1912, { // random trigger
+        {"Group_2", "71,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
+        {"Group_1", "51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
+    }},
+    {3607, { // sequence trigger
+        {"Append", "435,g.1", {}, sourceFuncType::addGrSM, srcObjType::trig, true},
+    }},
+    {3608, { // spawn particle trigger
+        {"Particle", "51,g", {}, sourceFuncType::addGr, srcObjType::particle},
+        {"Position", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
+    }},
+    {3618, { // reset trigger
+        {"Group", "51,g", {}, sourceFuncType::addGr, srcObjType::collectable},
+    }},
+    {1914, { // static camera trigger
+        {"Target", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
+    }},
+    {2062, { // edge camera trigger
+        {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+    }},
+    {3605, { // edit song trigger
+        {"Central_obj", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Controlling_obj", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
+    }},
+    {3602, { // sfx trigger
+        {"Central_obj", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Controlling_obj", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
+    }},
+    {3603, { // edit sfx trigger
+        {"Central_obj", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Controlling_obj", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"SFX_group", "457,g", {}, sourceFuncType::addGr, srcObjType::sfxTrig},
+    }},
+    {3604, { // event trigger
+        {"Group", "51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
+    }},
+    {3613, { // UI trigger
+        {"UI_objects", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Anchor", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
+    }},
+    {3662, { // link visible trigger
+        {"Group", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+    }},
+    {1815, { // collision trigger
+        {"Triggers", "56,1,51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
+        {"Objects", "56,0,51,g", {{{"56", "1"}, "56,1"}}, sourceFuncType::addGr, srcObjType::any},
+        {"Block_B", "95,g", {}, sourceFuncType::addGr, srcObjType::collision},
+        {"Block_A", "80,g", {}, sourceFuncType::addGr, srcObjType::collision},
+    }},
 
 
 };
 
+
+ 
 /*
-1,1611,2,435,3,-135,36,1,51,222,80,111,77,333;
 
-
-
+1,1815,2,195,3,135,36,1,51,0,10,0.5,80,111,95,222;
 
 
 */

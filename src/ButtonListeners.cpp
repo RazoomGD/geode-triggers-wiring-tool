@@ -20,7 +20,7 @@ void MyEditorUI::onMainButton(CCObject* sender) {
 }
 
 void MyEditorUI::onInfoButton(CCObject*) { // todo: change description
-    int id = getNextFreeItemFixed();    
+    int id = getNextFreeBlock();    
     FLAlertLayer::create(
         "Color Example",
         std::format("next id = {}", id),
