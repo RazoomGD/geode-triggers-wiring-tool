@@ -1,39 +1,22 @@
-#include "EditorUI.hpp"
+#include "ToolUtils.hpp"
 
-std::set<srcObjType> MyEditorUI::getTypesById(short objId) {
+std::set<srcObjType> getTypesById(short objId) {
     std::set<srcObjType> result;
-    if (triggerIDs.contains(objId)) {
-        result.insert(srcObjType::trig);
-    } 
-    if (animatedIDs.contains(objId)) {
-        result.insert(srcObjType::anim);
-    }
-    if (objId == keyFrameOjbID) {
-        result.insert(srcObjType::keyFrame);
-    } 
-    if (objId == itemObjID) {
-        result.insert(srcObjType::item);
-    } 
-    if (objId == particleObjID) {
-        result.insert(srcObjType::particle);
-    }
-    if (objId == sfxTriggerObjID) {
-        result.insert(srcObjType::particle);
-    }
-    if (objId == collisionBlockID) {
-        result.insert(srcObjType::collision);
-    }
-    if (areaEffectsIDs.contains(objId)) {
-        result.insert(srcObjType::areaEffect);
-    }
-    if (collectableIDs.contains(objId)) {
-        result.insert(srcObjType::collectable);
-    }
-    result.insert(srcObjType::any);
+    if (triggerIDs.contains(objId)) result.insert(srcObjType::trig);
+    if (animatedIDs.contains(objId)) result.insert(srcObjType::anim);
+    if (objId == keyFrameOjbID) result.insert(srcObjType::keyFrame);
+    if (objId == itemObjID) result.insert(srcObjType::item);
+    if (objId == particleObjID) result.insert(srcObjType::particle);
+    if (objId == sfxTriggerObjID) result.insert(srcObjType::particle);
+    if (objId == gradientTriggerId) result.insert(srcObjType::gradientTrig);
+    if (objId == collisionBlockID) result.insert(srcObjType::collision);
+    if (areaEffectsIDs.contains(objId)) result.insert(srcObjType::areaEffect);
+    if (collectableIDs.contains(objId)) result.insert(srcObjType::collectable);
+    result.insert(srcObjType::any); // any object is any
     return result;
 }
 
-CCArray * MyEditorUI::filterObjectsByType(srcObjType filteringType, CCArray * objects, bool color) {
+CCArray * filterObjectsByType(srcObjType filteringType, CCArray * objects, bool color, EditorUI * editorInstance) {
     auto result = CCArray::create();
     for (unsigned i = 0; i < objects->count(); i++) {
         auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
@@ -42,13 +25,13 @@ CCArray * MyEditorUI::filterObjectsByType(srcObjType filteringType, CCArray * ob
             result->addObject(obj);
             if (color) obj->selectObject(ccc3(255, 0, 255));
         } else {
-            if (color) EditorUI::deselectObject(obj);
+            if (color) editorInstance->deselectObject(obj);
         }
     }
     return result;
 }
 
-std::vector<short> MyEditorUI::getObjectsCommonGroups(CCArray * objects) {
+std::vector<short> getObjectsCommonGroups(CCArray * objects) {
     if (objects->count() == 0) return {};
     auto firstObj = static_cast<GameObject*>(objects->objectAtIndex(0));
 
@@ -77,7 +60,7 @@ std::vector<short> MyEditorUI::getObjectsCommonGroups(CCArray * objects) {
     return std::vector<short>(commonGroups.begin(), commonGroups.end());
 };
 
-bool MyEditorUI::isNewGroupPossible(CCArray * objects) {
+bool isNewGroupPossible(CCArray * objects) {
     for (unsigned i = 0; i < objects->count(); i++) {
         auto groups = static_cast<GameObject*>(objects->objectAtIndex(i))->m_groups;
         if (!groups) continue;
@@ -88,14 +71,14 @@ bool MyEditorUI::isNewGroupPossible(CCArray * objects) {
     return true;
 };
 
-void MyEditorUI::addToGroup(int group, CCArray * objects) {
+void addToGroup(int group, CCArray * objects) {
     for (unsigned i = 0; i < objects->count(); i++) {
         auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
         obj->addToGroup(group);
     }
 };
 
-void MyEditorUI::addToGroupSM(int group, CCArray * objects) {
+void addToGroupSM(int group, CCArray * objects) {
     for (unsigned i = 0; i < objects->count(); i++) {
         auto obj = static_cast<EffectGameObject*>(objects->objectAtIndex(i));
         obj->addToGroup(group);
@@ -104,7 +87,7 @@ void MyEditorUI::addToGroupSM(int group, CCArray * objects) {
     }
 };
 
-void MyEditorUI::addToGroupAnim(int group, CCArray * objects) {
+void addToGroupAnim(int group, CCArray * objects) {
     for (unsigned i = 0; i < objects->count(); i++) {
         auto obj = static_cast<EnhancedGameObject*>(objects->objectAtIndex(i));
         obj->addToGroup(group);
@@ -113,7 +96,7 @@ void MyEditorUI::addToGroupAnim(int group, CCArray * objects) {
     }
 };
 
-void MyEditorUI::setItemId(int id, CCArray * objects) {
+void setItemId(int id, CCArray * objects) {
     for (unsigned i = 0; i < objects->count(); i++) {
         auto obj = static_cast<EffectGameObject*>(objects->objectAtIndex(i));
         obj->m_itemID = id;
@@ -122,8 +105,24 @@ void MyEditorUI::setItemId(int id, CCArray * objects) {
     }
 }
 
+void setCollisionId(int id, CCArray * objects) {
+    for (unsigned i = 0; i < objects->count(); i++) {
+        auto obj = static_cast<EffectGameObject*>(objects->objectAtIndex(i));
+        obj->m_itemID = id;
+        bool isDyn = obj->m_isDynamicBlock;
+        static_cast<CCLabelBMFont*>(obj->getChildren()->objectAtIndex(0))
+            ->setString((std::format("{}{}", id, (isDyn ? "." : "")).c_str()));
+    }
+}
+
+void setGradientId(int id, CCArray * objects) {
+    for (unsigned i = 0; i < objects->count(); i++) {
+        setGradientTriggerId(objects->objectAtIndex(i), id);
+    }
+}
+
 // copy 1)groups todo: 2)spawn, multi trigger, itemID, animate on trigger
-void MyEditorUI::myCopyObjectProps(GameObject * from, TWTObjCopy * to) {
+void myCopyObjectProps(GameObject * from, TWTObjCopy * to) {
     if (from->m_groups) {
         std::memcpy(to->m_groups, from->m_groups, sizeof(short) * 10);
     } else {
@@ -142,9 +141,16 @@ void MyEditorUI::myCopyObjectProps(GameObject * from, TWTObjCopy * to) {
     if (objTypes.contains(srcObjType::item)) {
         to->m_itemID = static_cast<EffectGameObject*>(from)->m_itemID;
     }
+    if (objTypes.contains(srcObjType::collision)) {
+        to->m_collisionID = static_cast<EffectGameObject*>(from)->m_itemID;
+        to->m_isCollisionDyn = static_cast<EffectGameObject*>(from)->m_isDynamicBlock;
+    }
+    if (objTypes.contains(srcObjType::gradientTrig)) {
+        to->m_gradientID = getGradientTriggerId(from);
+    }
 };
 
-void MyEditorUI::myPasteObjectProps(TWTObjCopy * from, GameObject * to) {
+void myPasteObjectProps(TWTObjCopy * from, GameObject * to) {
     if (!to->m_groups) to->addToGroup(1);
     std::memcpy(to->m_groups, from->m_groups, sizeof(short) * 10);
     to->m_groupCount = from->m_groupCount;
@@ -163,9 +169,19 @@ void MyEditorUI::myPasteObjectProps(TWTObjCopy * from, GameObject * to) {
         static_cast<CCLabelBMFont*>(to->getChildren()->objectAtIndex(0))
             ->setString((std::format("C:{}", *(from->m_itemID)).c_str()));
     }
+    if (from->m_collisionID) {
+        bool isDyn = from->m_isCollisionDyn ? *(from->m_isCollisionDyn) : false;
+        static_cast<EffectGameObject*>(to)->m_itemID = *(from->m_collisionID);
+        static_cast<EffectGameObject*>(to)->m_isDynamicBlock = isDyn;
+        static_cast<CCLabelBMFont*>(to->getChildren()->objectAtIndex(0))
+            ->setString((std::format("{}{}", *(from->m_collisionID), (isDyn ? "." : "")).c_str()));
+    }
+    if (from->m_gradientID) {
+        setGradientTriggerId(to, *(from->m_gradientID));
+    }
 }
 
-std::vector<int> MyEditorUI::getObjectsAllColors(CCArray * objects) {
+std::vector<int> getObjectsAllColors(CCArray * objects) {
     std::set<int> colorIds;
     for (unsigned i = 0; i < objects->count(); i++) {
         auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
@@ -183,19 +199,40 @@ std::vector<int> MyEditorUI::getObjectsAllColors(CCArray * objects) {
     return std::vector<int>(colorIds.begin(), colorIds.end());
 };
 
-std::vector<int> MyEditorUI::getItemsAllIds(CCArray * objects) {
+std::vector<int> getItemsAllIds(CCArray * objects) {
     std::set<int> itemIds;
     for (unsigned i = 0; i < objects->count(); i++) {
         auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
         if (obj->m_objectID != itemObjID) continue;
         auto item = static_cast<EffectGameObject*>(objects->objectAtIndex(i));
         itemIds.insert(item->m_itemID);
-        log::debug("found item {}", item->m_itemID);
     }
     return std::vector<int>(itemIds.begin(), itemIds.end());
 };
 
-std::optional<int> MyEditorUI::getCommonBaseColor(CCArray * objects) {
+std::vector<int> getCollisionsAllIds(CCArray * objects) {
+    std::set<int> collisionIds;
+    for (unsigned i = 0; i < objects->count(); i++) {
+        auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
+        if (obj->m_objectID != collisionBlockID) continue;
+        auto colBlock = static_cast<EffectGameObject*>(objects->objectAtIndex(i));
+        collisionIds.insert(colBlock->m_itemID);
+    }
+    return std::vector<int>(collisionIds.begin(), collisionIds.end());
+};
+
+std::vector<int> getGradientsAllIds(CCArray * objects) {
+    std::set<int> gradIds;
+    for (unsigned i = 0; i < objects->count(); i++) {
+        auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
+        if (obj->m_objectID != gradientTriggerId) continue;
+        auto id = getGradientTriggerId(obj);
+        gradIds.insert(id);
+    }
+    return std::vector<int>(gradIds.begin(), gradIds.end());
+};
+
+std::optional<int> getCommonBaseColor(CCArray * objects) {
     int commonBaseCol = -1;
     for (unsigned i = 0; i < objects->count(); i++) {
         auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
@@ -212,7 +249,7 @@ std::optional<int> MyEditorUI::getCommonBaseColor(CCArray * objects) {
     return commonBaseCol;
 };
 
-std::optional<int> MyEditorUI::getCommonDetailColor(CCArray * objects) {
+std::optional<int> getCommonDetailColor(CCArray * objects) {
     int commonDetailCol = -1;
     for (unsigned i = 0; i < objects->count(); i++) {
         auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
@@ -229,7 +266,7 @@ std::optional<int> MyEditorUI::getCommonDetailColor(CCArray * objects) {
     return commonDetailCol;
 };
 
-int MyEditorUI::getNextFreeItemFixed() {
+int getNextFreeItemFixed() {
     // Robtop's function is broken. This one is slow but at least works
     auto levelLayer = LevelEditorLayer::get();
     auto objects = levelLayer->m_objects;
@@ -282,7 +319,7 @@ int MyEditorUI::getNextFreeItemFixed() {
 }
 
 // original function was inlined (0x89e40)
-int MyEditorUI::getNextFreeBlock() {
+int getNextFreeBlock() {
     auto levelLayer = LevelEditorLayer::get();
     auto objects = levelLayer->m_objects;
     std::set<short> blockIds;
@@ -300,8 +337,20 @@ int MyEditorUI::getNextFreeBlock() {
     return current;
 }
 
+inline int getGradientTriggerId(CCObject * trig) {
+    // completely safe
+    auto ptr = reinterpret_cast<char*>(trig);
+    auto id = *reinterpret_cast<int32_t*>(ptr + 0x748);
+    return id;
+}
 
-std::map<std::string, std::string> MyEditorUI::objectToKeyVal(std::string objSaveString) {
+inline void setGradientTriggerId(CCObject * trig, int32_t id) {
+    // completely safe 2
+    auto ptr = reinterpret_cast<char*>(trig);
+    *reinterpret_cast<int32_t*>(ptr + 0x748) = id;
+}
+
+std::map<std::string, std::string> objectToKeyVal(std::string objSaveString) {
     std::stringstream ss(objSaveString);
     std::map<std::string, std::string> keyVals;
     std::string key, val;
@@ -314,7 +363,7 @@ std::map<std::string, std::string> MyEditorUI::objectToKeyVal(std::string objSav
 // needed to check if something was changed in targetObj via editObject menu or somehow else
 // while tool interface was open. This function computes this difference and applies
 // it to the "obj" witch is an initial state of targetObj
-std::string MyEditorUI::applyDifference(std::string before, std::string after, std::string obj) {
+std::string applyDifference(std::string before, std::string after, std::string obj) {
     auto kvBefore = objectToKeyVal(before);
     auto kvAfter = objectToKeyVal(after);
     auto kvObj = objectToKeyVal(obj);
@@ -341,4 +390,40 @@ std::string MyEditorUI::applyDifference(std::string before, std::string after, s
     result.pop_back();
     return result;
 };
+
+
+
+
+
+// auto myWrapFunction(uintptr_t address, tulip::hook::WrapperMetadata const& metadata) {
+// 	auto wrapped = geode::hook::createWrapper(reinterpret_cast<void*>(address), metadata);
+// 	if (wrapped.isErr()) {{
+// 		throw std::runtime_error(wrapped.unwrapErr());
+// 	}}
+// 	return wrapped.unwrap();
+// }
+
+
+// void myHook(long long smth) {
+//     log::info("Hook reached!");
+// 	// Call the original manually
+// 	static auto original = myWrapFunction(
+//         geode::base::get() + 0x3d1eb0,
+// 		tulip::hook::WrapperMetadata{
+// 			.m_convention = geode::hook::createConvention(tulip::hook::TulipConvention::Fastcall),
+// 			.m_abstract = tulip::hook::AbstractFunction::from(static_cast<void(*)(long long)>(nullptr)),
+// 		}
+//     );
+//     reinterpret_cast<void(*)(long long)>(original)(smth);
+//     log::info("After original!");
+// }
+
+// $execute {
+//     Mod::get()->hook(
+//         reinterpret_cast<void*>(geode::base::get() + 0x3d1540), // address
+//         &myHook, // detour
+//         "MenuLayer::onNewgrounds", // display name, shows up on the console
+//         tulip::hook::TulipConvention::Thiscall // calling convention
+//     );
+// }
 

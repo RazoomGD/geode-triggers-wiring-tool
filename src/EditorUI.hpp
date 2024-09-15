@@ -78,6 +78,7 @@ class $modify(MyEditorUI, EditorUI) {
 
     void showDebugText(std::string text, float timeSec=0.5);
     CCPoint screenToEditorLayerPosition(CCPoint screenPoint); // converter
+    bool honestAddToGroup(int group, CCArray * objects);
 
     // BUTTON LISTENERS
 
@@ -112,34 +113,11 @@ class $modify(MyEditorUI, EditorUI) {
     // TOOL MAIN LOGIC
 
     bool toolIsActivated();
-    void applyToolConfig();
+    void applyToolConfig(bool updateSourceObjects=true);
     bool handleTargetObject();
 
     // TOOL UTILS
 
-    std::set<srcObjType> getTypesById(short objId);
-    // std::set<srcObjType> getObjectsAllTypes(CCArray * objects);
-    CCArray * filterObjectsByType(srcObjType objType, CCArray * objects, bool color);
-
-    std::vector<short> getObjectsCommonGroups(CCArray * objects);
-    bool isNewGroupPossible(CCArray * objects);
-    void addToGroup(int group, CCArray * objects);
-    void addToGroupSM(int group, CCArray * objects);
-    void addToGroupAnim(int group, CCArray * objects);
-    void setItemId(int id, CCArray * objects);
-    void myCopyObjectProps(GameObject * from, TWTObjCopy * to);
-    void myPasteObjectProps(TWTObjCopy * from, GameObject * to);
-
-    std::vector<int> getObjectsAllColors(CCArray * objects);
-    std::vector<int> getItemsAllIds(CCArray * objects);
-    std::optional<int> getCommonBaseColor(CCArray * objects);
-    std::optional<int> getCommonDetailColor(CCArray * objects);
-
-    int getNextFreeItemFixed();
-    int getNextFreeBlock();
-
-    std::map<std::string, std::string> objectToKeyVal(std::string objSaveString);
-    std::string applyDifference(std::string before, std::string after, std::string obj);
     CCPoint calculateLineStartOnRectangle(CCPoint endPoint, std::pair<CCPoint, CCPoint> box);
 
 

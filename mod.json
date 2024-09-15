@@ -38,6 +38,12 @@
 			"name": "Hide info button",
 			"description": "Hide that small blue info button at the lower left corner of the large button in editor"
 		},
+		"move-slider" : {
+			"type": "bool",
+			"default": true,
+			"name": "Fix interface overlapping",
+			"description": "This mod adds two extra buttons to editor upper left menu. In some cases they may overlap with a <cg>slider</c>. Enabling this setting will move the slider to the right, which will probably fix the overlapping"
+		},
 		"preview-color" : {
 			"type": "bool",
 			"default": true,

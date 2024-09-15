@@ -1,4 +1,5 @@
 #include "EditorUI.hpp"
+#include "ToolUtils.hpp"
 
 // UPPER MENU
 
@@ -46,21 +47,23 @@ void MyEditorUI::createUpperMenu(const std::vector<Variant>& configuration, bool
 
 // listens to button clicking in upper menu and sets m_config
 void MyEditorUI::upperMenuActionListener(CCObject * sender) {
-    auto menu = m_fields->m_upperMenu;
+    auto button = static_cast<CCMenuItemSpriteExtra*>(sender);
+    if (button->getChildByID("marker")) return;
     // clear old marker
+    auto menu = m_fields->m_upperMenu;
     auto buttons = menu->getChildren();
     for (unsigned i = 0; i < buttons->count(); i++) {
         auto btn = static_cast<CCMenuItemSpriteExtra*>(buttons->objectAtIndex(i));
         btn->removeChildByID("marker");
     }
-    // add new marker
-    auto button = static_cast<CCMenuItemSpriteExtra*>(sender);
-    auto marker = CCLabelBMFont::create("<", "bigFont.fnt");
-    marker->setAnchorPoint(ccp(0, 0));
-    marker->setPosition(ccp(button->getContentSize().width + 1, 0));
-    marker->setScale(.5f);
-    marker->setID("marker");
-    button->addChild(marker);
+    { // add new marker
+        auto marker = CCLabelBMFont::create("<", "bigFont.fnt");
+        marker->setAnchorPoint(ccp(0, 0));
+        marker->setPosition(ccp(button->getContentSize().width + 1, 0));
+        marker->setScale(.5f);
+        marker->setID("marker");
+        button->addChild(marker);
+    }
     // update m_globalConfig and maybe create new lower menu
     auto config = static_cast<UpperMenuButtonParameters*>(button->getUserObject())->m_config;
     if (!m_fields->m_globalConfig.m_isFinished || 
@@ -80,10 +83,11 @@ void MyEditorUI::upperMenuActionListener(CCObject * sender) {
         lowerMenu->setPosition(m_fields->m_objectTarget->getPosition() + ccp(5, -15));
 
         m_fields->m_globalConfig.m_isFinished = true;
+        applyToolConfig(true);
     } else {
         m_fields->m_globalConfig.m_variant = config;
+        applyToolConfig(false);
     }
-    applyToolConfig();
 }
 
 
@@ -101,21 +105,19 @@ void MyEditorUI::createLowerMenuForVariant(Variant variant) {
     auto menuType = variant.getLowerMenuType().first;
     // consider source objects only of this type
     auto forObjectsType = variant.getLowerMenuType().second;
-    auto filteredObjects = filterObjectsByType(forObjectsType, m_fields->m_objectsSource, true);
+    auto filteredObjects = filterObjectsByType(forObjectsType, m_fields->m_objectsSource, true, this);
     m_fields->m_objectsSourceFiltered = filteredObjects;
 
     std::vector<std::pair<std::string, int>> lowerMenuConfig;
     switch (menuType) {
         case lowerMenuType::selectGroup: {
-            auto newGroupPossible = isNewGroupPossible(filteredObjects);
-            if (newGroupPossible) {
-                int nextFree = m_fields->m_globalConfig.m_nextFreeGroup;
-                lowerMenuConfig.push_back({std::format("next ({})", nextFree), nextFree});
-                // lowerMenuConfig.push_back({"next free", nextFree});
-            }
             auto commonGroups = getObjectsCommonGroups(filteredObjects);
             for (unsigned i = 0; i < commonGroups.size(); i++) {
                 lowerMenuConfig.push_back({std::format("group {}", commonGroups.at(i)), commonGroups.at(i)});
+            }
+            if (isNewGroupPossible(filteredObjects)) {
+                int nextFree = m_fields->m_globalConfig.m_nextFreeGroup;
+                lowerMenuConfig.push_back({std::format("next ({})", nextFree), nextFree});
             }
             lowerMenuConfig.push_back({"None", -1});
             break;
@@ -155,6 +157,30 @@ void MyEditorUI::createLowerMenuForVariant(Variant variant) {
                 }
             }
             lowerMenuConfig.push_back({std::format("next ({})", nextFreeItem), nextFreeItem});
+            lowerMenuConfig.push_back({"None", -1});
+            break;
+        }
+        case lowerMenuType::selectCollision: {
+            auto allCollisionIds = getCollisionsAllIds(filteredObjects);
+            auto nextFreeCollision = getNextFreeBlock();
+            for (unsigned i = 0; i < allCollisionIds.size(); i++) {
+                if (allCollisionIds.at(i)) {
+                    lowerMenuConfig.push_back({std::format("block {}", allCollisionIds.at(i)), allCollisionIds.at(i)});
+                }
+            }
+            lowerMenuConfig.push_back({std::format("next ({})", nextFreeCollision), nextFreeCollision});
+            lowerMenuConfig.push_back({"None", -1});
+            break;
+        }
+        case lowerMenuType::selectGradient: {
+            auto allGradIds = getGradientsAllIds(filteredObjects);
+            auto nextFreeGrad = LevelEditorLayer::get()->getNextFreeGradientID(nullptr);
+            for (unsigned i = 0; i < allGradIds.size(); i++) {
+                if (allGradIds.at(i)) {
+                    lowerMenuConfig.push_back({std::format("grad {}", allGradIds.at(i)), allGradIds.at(i)});
+                }
+            }
+            lowerMenuConfig.push_back({std::format("next ({})", nextFreeGrad), nextFreeGrad});
             lowerMenuConfig.push_back({"None", -1});
             break;
         }
@@ -203,6 +229,7 @@ void MyEditorUI::createLowerMenu(const std::vector<std::pair<std::string, int>>&
 // listens to button clicking in lower menu and sets m_config
 void MyEditorUI::lowerMenuActionListener(CCObject * sender) {
     auto menu = m_fields->m_lowerMenu;
+    if (static_cast<CCMenuItemSpriteExtra*>(sender)->getChildByID("marker")) return;
     // remove old marker
     auto buttons = menu->getChildren();
     for (unsigned i = 0; i < buttons->count(); i++) {
@@ -222,5 +249,5 @@ void MyEditorUI::lowerMenuActionListener(CCObject * sender) {
     auto config = static_cast<LowerMenuButtonParameters*>(button->getUserObject())->m_config;
     m_fields->m_globalConfig.m_group = config.second;
 
-    applyToolConfig();
+    applyToolConfig(true);
 }

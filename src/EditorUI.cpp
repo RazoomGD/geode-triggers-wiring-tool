@@ -63,7 +63,6 @@ void MyEditorUI::undoLastAction(CCObject * p0) {
     if (levelLayer->m_undoObjects->count() && 
         std::find(undo.begin(), undo.end(), lastUndo->m_uID) != undo.end()) {
         MyEditorUI::undoLastAction(p0);
-        log::debug("undone 2 times");
     }
 }
 
@@ -76,6 +75,5 @@ void MyEditorUI::redoLastAction(CCObject * p0) {
     if (levelLayer->m_redoObjects->count() && 
         std::find(redo.begin(), redo.end(), lastRedo->m_uID) != redo.end()) {
         MyEditorUI::redoLastAction(p0);
-        log::debug("redone 2 times");
     }
 }

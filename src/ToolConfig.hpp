@@ -4,37 +4,46 @@
 #include <utility>
 #include <vector>
 #include <string>
+#include <utility>
+#include <cstring>
+#include <optional>
 #include <set>
 
 using objId = short;
 
-// todo: effect id support
 enum srcObjType {
-    any,         // anything (objects)
-    trig,        // triggers
-    anim,        // animated objects
-    keyFrame,    // keyframe
-    areaEffect,  // area triggers
-    item,        // item
-    particle,    // particle generator
-    collectable, // also resetable
-    sfxTrig,     // sfx trigger
-    collision,   // collision block
+    any,          // anything (objects)
+    trig,         // triggers
+    anim,         // animated objects
+    keyFrame,     // keyframe
+    areaEffect,   // area triggers
+    item,         // item
+    particle,     // particle generator
+    collectable,  // also resetable
+    sfxTrig,      // sfx trigger
+    collision,    // collision block
+    gradientTrig, // gradient trigger
 };
 
+// hey: don't forget to add a new type to Variant::getLowerMenuType()
 enum sourceFuncType {
-    addGr,     // just add to the group
-    addGrSM,   // add group + set spawn trigger & multi trigger
-    addGrAnim, // add group + set animateOnTrigger
-    addGrCol,  // exclusively for pulse trigger preview mode (does the same as addGr)
-    color,     // does nothing to source objects
-    setItem,   // sets item id
+    addGr,        // just add to the group
+    addGrSM,      // add group + set spawn trigger & multi trigger
+    addGrAnim,    // add group + set animateOnTrigger
+    addGrCol,     // exclusively for pulse trigger preview mode (does the same as addGr)
+    color,        // does nothing to source objects
+    setItem,      // sets item id
+    setCollision, // sets collision block id
+    setGradient,  // sets id in gradient trigger
+    honestAddGr,  // add group using honest strategy
 };
 
 enum lowerMenuType {
     selectGroup,
     selectColor,
     selectItem,
+    selectCollision,
+    selectGradient,
 };
 
 // Triggers (basically every object you are able to set as spawn trigger & multi trigger)
@@ -96,12 +105,12 @@ const std::set<objId> areaEffectsIDs = {
     3006, 3007, 3008, 3009, 3010
 };
 
-// keyframe path object
-const objId keyFrameOjbID = 3032;
+const objId keyFrameOjbID = 3032; // keyframe path object
 const objId itemObjID = 1615;
 const objId particleObjID = 2065;
 const objId sfxTriggerObjID = 3602;
 const objId collisionBlockID = 1816;
+const objId gradientTriggerId = 2903;
 
 const std::map<int, std::string> colorIdName = {
     {1005, "Player-1"},
@@ -120,7 +129,7 @@ const std::map<int, std::string> colorIdName = {
     {1011, "White"},
 };
 
-struct TWTObjCopy : public CCObject {
+struct TWTObjCopy : public cocos2d::CCObject {
     TWTObjCopy() {
         this->autorelease();
         this->m_groups = new std::array<short, 10>;
@@ -134,6 +143,9 @@ struct TWTObjCopy : public CCObject {
     std::optional<bool> m_isMultiTrigger;
     std::optional<bool> m_isAnimOnTrigger;
     std::optional<int> m_itemID;
+    std::optional<bool> m_isCollisionDyn;
+    std::optional<int> m_collisionID;
+    std::optional<int> m_gradientID;
 };
 
 const struct Condition {
@@ -148,7 +160,7 @@ const struct Variant {
     std::vector<Condition> m_triggerConditionalConfigString;
     sourceFuncType m_srcFuncType; // is used to create lower menu and apply the final config
     srcObjType m_srcObjType;
-    bool appendNotOverride = false;
+    bool m_appendNotOverride = false;
 
     std::pair<lowerMenuType, srcObjType> getLowerMenuType() {
         static const std::map<sourceFuncType, lowerMenuType> sourceFuncToMenuType = {
@@ -158,6 +170,9 @@ const struct Variant {
             {sourceFuncType::addGrCol, lowerMenuType::selectGroup},
             {sourceFuncType::color, lowerMenuType::selectColor},
             {sourceFuncType::setItem, lowerMenuType::selectItem},
+            {sourceFuncType::setCollision, lowerMenuType::selectCollision},
+            {sourceFuncType::setGradient, lowerMenuType::selectGradient},
+            {sourceFuncType::honestAddGr, lowerMenuType::selectGroup},
         };
         return {sourceFuncToMenuType.at(this->m_srcFuncType), this->m_srcObjType};
     }
@@ -248,7 +263,7 @@ const std::map<objId, std::vector<Variant>> CONFIGURATION = {
         {"Center", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
         {"Color", "278,0,71,g", {}, sourceFuncType::color, srcObjType::any},
     }},
-    {3011, { // edit area move
+    {3011, { // edit area move todo: support for area effect id
         {"Group", "355,0,51,g", {}, sourceFuncType::addGr, srcObjType::areaEffect},
     }},
     {3012, { // edit area rotate
@@ -264,17 +279,17 @@ const std::map<objId, std::vector<Variant>> CONFIGURATION = {
         {"Group", "355,0,51,g", {}, sourceFuncType::addGr, srcObjType::areaEffect},
     }},
     {1595, { // touch trigger
-        {"Triggers", "82,1,51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
-        {"Objects", "82,0,51,g", {{{"82", "1"}, "82,1"}, {{"82", "2"}, "82,2"}}, sourceFuncType::addGr, srcObjType::any},
+        {"Spawn", "82,1,51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
+        {"Toggle", "82,0,51,g", {{{"82", "1"}, "82,1"}, {{"82", "2"}, "82,2"}}, sourceFuncType::addGr, srcObjType::any},
     }},
     {1611, { // count trigger
-        {"Triggers", "56,1,51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
-        {"Objects", "56,0,51,g", {{{{"56", "1"}, "56,1"}}}, sourceFuncType::addGr, srcObjType::any}, 
+        {"Spawn", "56,1,51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
+        {"Toggle", "56,0,51,g", {{{"56", "1"}, "56,1"}}, sourceFuncType::addGr, srcObjType::any}, 
         {"Item", "80,g", {}, sourceFuncType::setItem, srcObjType::item},
     }},
     {1811, { // instant count trigger
-        {"Triggers", "56,1,51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
-        {"Objects", "56,0,51,g", {{{{"56", "1"}, "56,1"}}}, sourceFuncType::addGr, srcObjType::any},
+        {"Spawn", "56,1,51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
+        {"Toggle", "56,0,51,g", {{{"56", "1"}, "56,1"}}, sourceFuncType::addGr, srcObjType::any},
         {"Item", "80,g", {}, sourceFuncType::setItem, srcObjType::item},
     }},
     {1817, { // pickup trigger
@@ -293,12 +308,12 @@ const std::map<objId, std::vector<Variant>> CONFIGURATION = {
     }},
     {3619, { // item edit trigger
         {"Target", "478,1,51,g", {}, sourceFuncType::setItem, srcObjType::item},
-        {"Item_2", "477,1,95,g", {}, sourceFuncType::setItem, srcObjType::item},
         {"Item_1", "476,1,80,g", {}, sourceFuncType::setItem, srcObjType::item},
+        {"Item_2", "477,1,95,g", {}, sourceFuncType::setItem, srcObjType::item},
     }},
     {3620, { // item compare trigger
-        {"Item_2", "477,1,95,g", {}, sourceFuncType::setItem, srcObjType::item},
         {"Item_1", "476,1,80,g", {}, sourceFuncType::setItem, srcObjType::item},
+        {"Item_2", "477,1,95,g", {}, sourceFuncType::setItem, srcObjType::item},
         {"On_false", "71,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
         {"On_true", "51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
     }},
@@ -306,8 +321,8 @@ const std::map<objId, std::vector<Variant>> CONFIGURATION = {
         {"Item", "80,g", {}, sourceFuncType::setItem, srcObjType::item},
     }},
     {1912, { // random trigger
-        {"Group_2", "71,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
         {"Group_1", "51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
+        {"Group_2", "71,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
     }},
     {3607, { // sequence trigger
         {"Append", "435,g.1", {}, sourceFuncType::addGrSM, srcObjType::trig, true},
@@ -349,20 +364,63 @@ const std::map<objId, std::vector<Variant>> CONFIGURATION = {
         {"Group", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
     {1815, { // collision trigger
-        {"Triggers", "56,1,51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
-        {"Objects", "56,0,51,g", {{{"56", "1"}, "56,1"}}, sourceFuncType::addGr, srcObjType::any},
-        {"Block_B", "95,g", {}, sourceFuncType::addGr, srcObjType::collision},
-        {"Block_A", "80,g", {}, sourceFuncType::addGr, srcObjType::collision},
+        {"Spawn", "56,1,51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
+        {"Toggle", "56,0,51,g", {{{"56", "1"}, "56,1"}}, sourceFuncType::addGr, srcObjType::any},
+        {"Block_A", "80,g", {}, sourceFuncType::setCollision, srcObjType::collision},
+        {"Block_B", "95,g", {}, sourceFuncType::setCollision, srcObjType::collision},
+    }},
+    {3609, { // instant collision trigger
+        {"On_true", "51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
+        {"On_false", "71,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
+        {"Block_A", "80,g", {}, sourceFuncType::setCollision, srcObjType::collision},
+        {"Block_B", "95,g", {}, sourceFuncType::setCollision, srcObjType::collision},
+    }},
+    {3640, { // state block
+        {"State_on", "51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
+        {"State_off", "71,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
+    }},
+    {3643, { // toggle block
+        {"Spawn", "56,1,504,1,51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
+        {"Toggle", "56,0,504,0,51,g", {{{"56", "1"}, "56,1"}}, sourceFuncType::addGr, srcObjType::any},
+    }},
+    {1812, { // death trigger
+        {"Spawn", "56,1,51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
+        {"Toggle", "56,0,51,g", {{{"56", "1"}, "56,1"}}, sourceFuncType::addGr, srcObjType::any},
+    }},
+    {3600, { // end trigger
+        {"Group", "51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
+        {"Target_pos", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
+    }},
+    {2903, { // gradient trigger
+        {"Disable", "208,1,209,g", {}, sourceFuncType::setGradient, srcObjType::gradientTrig},
+        {"Point_1", "203,g", {}, sourceFuncType::honestAddGr, srcObjType::any},
+        {"Point_2", "204,g", {}, sourceFuncType::honestAddGr, srcObjType::any},
+        {"Point_3", "205,g", {}, sourceFuncType::honestAddGr, srcObjType::any},
+        {"Point_4", "206,g", {}, sourceFuncType::honestAddGr, srcObjType::any},
+    }},
+    {3022, { // teleport trigger
+        {"Group", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+    }},
+    {2905, { // shock wave shader
+        {"Group", "188,1,51,g", {}, sourceFuncType::addGr, srcObjType::any},
+    }},
+    {2907, { // shock line shader
+        {"Group", "188,1,51,g", {}, sourceFuncType::addGr, srcObjType::any},
+    }},
+    {2913, { // lens circles shader
+        {"Group", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+    }},
+    {2915, { // motion blur shader
+        {"Group", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+    }},
+    {2916, { // bulge shader
+        {"Group", "188,1,51,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
 
-
 };
-
-
  
 /*
 
-1,1815,2,195,3,135,36,1,51,0,10,0.5,80,111,95,222;
 
 
 */

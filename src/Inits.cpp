@@ -84,31 +84,42 @@ void MyEditorUI::initButtons() {
         smallBtn->setZOrder(2);
     }
     // mode selection buttons
-    auto setupBtnSpr = ButtonSprite::create("Set up");
-    setupBtnSpr->setScale(.5);
-    auto setupBtn = CCMenuItemSpriteExtra::create(
-        setupBtnSpr, this, menu_selector(MyEditorUI::onModeChanged));
-    setupBtn->setTag(Mode::SetupMode);
+    // auto setupBtnSpr = ButtonSprite::create("Set up");
+    // setupBtnSpr->setScale(.5);
+    // auto setupBtn = CCMenuItemSpriteExtra::create(
+    //     setupBtnSpr, this, menu_selector(MyEditorUI::onModeChanged));
+    // setupBtn->setTag(Mode::SetupMode);
 
-    auto previewBtnSpr = ButtonSprite::create("Preview");
-    previewBtnSpr->setScale(.5);
-    auto previewBtn = CCMenuItemSpriteExtra::create(
-        previewBtnSpr, this, menu_selector(MyEditorUI::onModeChanged));
-    previewBtn->setTag(Mode::PreviewMode);
+    // auto previewBtnSpr = ButtonSprite::create("Preview");
+    // previewBtnSpr->setScale(.5);
+    // auto previewBtn = CCMenuItemSpriteExtra::create(
+    //     previewBtnSpr, this, menu_selector(MyEditorUI::onModeChanged));
+    // previewBtn->setTag(Mode::PreviewMode);
+
+    // large button 2
+    auto largeBtn2Sprite = CCSprite::createWithSpriteFrameName("TWT_tool_off.png"_spr); // todo: other sprite
+    largeBtn2Sprite->setScale(.91f);
+    auto largeBtn2 = CCMenuItemSpriteExtra::create(
+        largeBtn2Sprite, this, menu_selector(MyEditorUI::onMainButton)); // todo: other selector
 
     // menu
-    twtMenu->setContentWidth(largeBtn->getContentWidth() + previewBtn->getContentWidth());
+    twtMenu->setContentWidth(largeBtn->getContentWidth() + largeBtn2->getContentWidth());
     twtMenu->setContentHeight(largeBtn->getContentHeight());
     twtMenu->setID("twt-menu");
     
     twtMenu->addChild(largeBtn);
     largeBtn->setPosition(largeBtn->getContentSize() / 2);
 
-    twtMenu->addChild(setupBtn);
-    setupBtn->setPosition(ccp(largeBtn->getContentSize().width + setupBtn->getContentSize().width / 2, largeBtn->getContentHeight() * .75));
+    twtMenu->addChild(largeBtn2);
+    largeBtn2->setPosition(largeBtn2->getContentSize() / 2 + ccp(largeBtn2->getContentWidth() * 1.1, 0));
 
-    twtMenu->addChild(previewBtn);
-    previewBtn->setPosition(ccp(largeBtn->getContentSize().width + previewBtn->getContentSize().width / 2, largeBtn->getContentHeight() * .25));
+    // twtMenu->addChild(setupBtn);
+    // setupBtn->setPosition(ccp(largeBtn->getContentSize().width + setupBtn->
+    //     getContentSize().width / 2, largeBtn->getContentHeight() * .75));
+
+    // twtMenu->addChild(previewBtn);
+    // previewBtn->setPosition(ccp(largeBtn->getContentSize().width + previewBtn->
+    //     getContentSize().width / 2, largeBtn->getContentHeight() * .25));
 
     auto undoMenu = this->getChildByID("undo-menu");
     undoMenu->setContentSize(undoMenu->getContentSize() + ccp(50, 0));
@@ -116,8 +127,11 @@ void MyEditorUI::initButtons() {
     undoMenu->addChild(twtMenu);
     undoMenu->updateLayout();
 
-    auto slider = this->getChildByID("position-slider");
-    slider->setPositionX(slider->getPositionX() + 50);
+    // slider
+    if (Mod::get()->template getSettingValue<bool>("move-slider")) { 
+        auto slider = this->getChildByID("position-slider");
+        slider->setPositionX(slider->getPositionX() + 50);
+    }
 }
 
 // set keybinds 

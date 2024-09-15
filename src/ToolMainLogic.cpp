@@ -1,4 +1,5 @@
 #include "EditorUI.hpp"
+#include "ToolUtils.hpp"
 
 bool MyEditorUI::toolIsActivated() {
     #ifdef GEODE_IS_WINDOWS 
@@ -26,7 +27,7 @@ bool MyEditorUI::handleTargetObject() {
     m_fields->m_objectTargetInitial = targetObj->getSaveString(nullptr);
     m_fields->m_objectTargetLastUse = m_fields->m_objectTargetInitial;
     // set next free group
-    m_fields->m_globalConfig.m_nextFreeGroup = LevelEditorLayer::get()->getNextFreeGroupID(nullptr);
+    m_fields->m_globalConfig.m_nextFreeGroup = levelLayer->getNextFreeGroupID(nullptr);
     
     // create and save copy of source objects
     m_fields->m_objectsSourceCopy = CCArray::create();
@@ -110,7 +111,7 @@ bool MyEditorUI::handleTargetObject() {
     return true;
 }
 
-void MyEditorUI::applyToolConfig() {
+void MyEditorUI::applyToolConfig(bool updateSourceObjects) {
     if (!m_fields->m_globalConfig.m_isFinished) return;
     auto targetStr = m_fields->m_globalConfig.m_variant.m_triggerConfigString;
     auto conditionalTargetStr = m_fields->m_globalConfig.m_variant.m_triggerConditionalConfigString;
@@ -118,58 +119,73 @@ void MyEditorUI::applyToolConfig() {
     auto group = m_fields->m_globalConfig.m_group;
     bool resetToDefault = (group == -1);
     auto levelLayer = LevelEditorLayer::get();
+    
+    // source objects
+    if (updateSourceObjects) {
+        for (unsigned i = 0; i < m_fields->m_objectsSource->count(); i++) {
+            auto obj = static_cast<GameObject*>(m_fields->m_objectsSource->objectAtIndex(i));
+            auto objDefaultAttributes = static_cast<TWTObjCopy*>(m_fields->m_objectsSourceCopy->objectAtIndex(i));
+            myPasteObjectProps(objDefaultAttributes, obj); // restore initial groups
+        }
+
+        auto objectsSource = m_fields->m_objectsSourceFiltered;
+        if (!resetToDefault) switch (m_fields->m_globalConfig.m_variant.m_srcFuncType) {
+            case sourceFuncType::addGr: {
+                addToGroup(group, objectsSource);
+                break;
+            }
+            case sourceFuncType::addGrSM: {
+                // todo: optionally disable this
+                addToGroupSM(group, objectsSource);
+                break;
+            }
+            case sourceFuncType::addGrAnim: {
+                // and this
+                addToGroupAnim(group, objectsSource);
+                break;
+            }
+            case sourceFuncType::addGrCol: 
+                addToGroup(group, objectsSource);
+                // no break
+            case sourceFuncType::color: {
+                // deselect source objects to be able to preview color
+                if (m_fields->m_modSettings.m_previewColor) {
+                    bool wereSelected = false;
+                    for (unsigned i = 0; i < m_fields->m_objectsSource->count(); i++) {
+                        auto obj = static_cast<GameObject*>(m_fields->m_objectsSource->objectAtIndex(i));
+                        if (obj->m_isSelected) wereSelected = true;
+                        EditorUI::deselectObject(obj);
+                    }
+                    if (wereSelected) showDebugText("Color preview", 1);
+                }
+                break;
+            }
+            case sourceFuncType::setItem: {
+                setItemId(group, objectsSource);
+                break;
+            }
+            case sourceFuncType::setCollision: {
+                setCollisionId(group, objectsSource);
+                break;
+            }
+            case sourceFuncType::setGradient: {
+                setGradientId(group, objectsSource);
+                break;
+            }
+            case sourceFuncType::honestAddGr: {
+                bool done = honestAddToGroup(group, objectsSource);
+                if (!done) addToGroup(group, objectsSource);
+                break;
+            }
+            default: break;
+        }
+    }
 
     { // check if target object was changed after previous tool use
         auto targetObjNow = m_fields->m_objectTarget->getSaveString(nullptr);
         auto targetObjLast = m_fields->m_objectTargetLastUse;
         m_fields->m_objectTargetInitial = applyDifference(
             targetObjLast, targetObjNow, m_fields->m_objectTargetInitial);
-    }
-    
-    // source objects
-    for (unsigned i = 0; i < m_fields->m_objectsSource->count(); i++) {
-        auto obj = static_cast<GameObject*>(m_fields->m_objectsSource->objectAtIndex(i));
-        auto objDefaultAttributes = static_cast<TWTObjCopy*>(m_fields->m_objectsSourceCopy->objectAtIndex(i));
-        myPasteObjectProps(objDefaultAttributes, obj); // restore initial groups
-    }
-
-    auto objectsSource = m_fields->m_objectsSourceFiltered ? m_fields->m_objectsSourceFiltered : m_fields->m_objectsSource;
-    if (!resetToDefault) switch (m_fields->m_globalConfig.m_variant.m_srcFuncType) {
-        case sourceFuncType::addGr: {
-            addToGroup(group, objectsSource);
-            break;
-        }
-        case sourceFuncType::addGrSM: {
-            // todo: optionally disable this
-            addToGroupSM(group, objectsSource);
-            break;
-        }
-        case sourceFuncType::addGrAnim: {
-            // and this
-            addToGroupAnim(group, objectsSource);
-            break;
-        }
-        case sourceFuncType::addGrCol: 
-            addToGroup(group, objectsSource);
-            // no break
-        case sourceFuncType::color: {
-            // deselect source objects to be able to preview color
-            if (m_fields->m_modSettings.m_previewColor) {
-                bool wereSelected = false;
-                for (unsigned i = 0; i < m_fields->m_objectsSource->count(); i++) {
-                    auto obj = static_cast<GameObject*>(m_fields->m_objectsSource->objectAtIndex(i));
-                    if (obj->m_isSelected) wereSelected = true;
-                    EditorUI::deselectObject(obj);
-                }
-                if (wereSelected) showDebugText("Color preview", 1);
-            }
-            break;
-        }
-        case sourceFuncType::setItem: {
-            setItemId(group, objectsSource);
-            break;
-        }
-        default: break;
     }
 
     // target object
@@ -182,7 +198,7 @@ void MyEditorUI::applyToolConfig() {
                 targetStr.replace(pos, 1, std::to_string(group));
             } else break;
         }
-        if (!m_fields->m_globalConfig.m_variant.appendNotOverride) {
+        if (!m_fields->m_globalConfig.m_variant.m_appendNotOverride) {
             modifiedTargetObject = std::format("{},{}", initialTargetObject, targetStr);
         } else {
             auto kvConfigStr = objectToKeyVal(targetStr);
@@ -207,11 +223,9 @@ void MyEditorUI::applyToolConfig() {
                 objKeyVal[condition.m_condition.first] == condition.m_condition.second)) {
                 // if key and value exist, add conditional "yes" string
                 modifiedTargetObject = std::format("{},{}", modifiedTargetObject, condition.m_yes);
-                log::debug("conditional YES");
             } else {
                 // if key or value not exist, add conditional "no" string
                 modifiedTargetObject = std::format("{},{}", modifiedTargetObject, condition.m_no);
-                log::debug("conditional NO");
             }
         }
     } else {
@@ -219,7 +233,7 @@ void MyEditorUI::applyToolConfig() {
     }
     auto objArray = levelLayer->createObjectsFromString(modifiedTargetObject, true, true); 
     if (objArray->count() == 0) {
-        log::debug("modified target object wasn't successfully created from string");
+        log::error("modified target object wasn't successfully created from string");
         showDebugText("Internal error");
         return;
     }
