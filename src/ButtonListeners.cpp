@@ -2,9 +2,9 @@
 #include "ToolUtils.hpp"
 
 void MyEditorUI::onMainButton(CCObject* sender) {
-    auto oldSprite = static_cast<CCMenuItemSpriteExtra*>(sender)->getNormalImage();
+    auto btn = static_cast<CCMenuItemSpriteExtra*>(sender);
+    auto oldSprite = btn->getNormalImage();
     m_fields->m_buttonIsActivated = !m_fields->m_buttonIsActivated;
-    auto btn = m_fields->m_button;
     if (m_fields->m_buttonIsActivated) {
         auto sprite = CCSprite::createWithSpriteFrameName("TWT_tool_on.png"_spr);
         sprite->setScale(oldSprite->getScale());

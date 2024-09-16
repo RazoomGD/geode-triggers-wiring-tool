@@ -16,7 +16,7 @@ void MyEditorUI::setKeybinds() {
     this->template addEventListener<keybinds::InvokeBindFilter>(
         [=](keybinds::InvokeBindEvent* event) {
             if (event->isDown()) {
-                this->onMainButton(nullptr);
+                this->onMainButton(m_fields->m_button);
             }
             return ListenerResult::Propagate;
         },

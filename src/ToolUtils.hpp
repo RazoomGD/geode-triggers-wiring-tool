@@ -12,6 +12,7 @@ CCArray * filterObjectsByType(srcObjType filteringType, CCArray * objects, bool 
 std::vector<short> getObjectsCommonGroups(CCArray * objects);
 
 bool isNewGroupPossible(CCArray * objects);
+bool isGroupPossible(CCArray * objects, int group);
 void addToGroup(int group, CCArray * objects);
 void addToGroupSM(int group, CCArray * objects);
 void addToGroupAnim(int group, CCArray * objects);

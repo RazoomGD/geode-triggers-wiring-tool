@@ -56,6 +56,12 @@
 			"name": "Smart Filter",
 			"description": "Ok, this is a bit complex thing (that's why it's disabled by default). But it is actually really <cy>powerful</c>. Let's say you've selected a bunch of blocks and triggers. By default if you connect them to the (let's say) spawn trigger, no options will be offered to you (because you can't \"spawn\" the blocks - you can only spawn the triggers). But when the <cg>Smart Filter</c> is enabled you will be offered an options as when selecting only triggers. These options will appear in the menu with the <cy>*</c> sign at the end. Additionally only filtered objects will keep their <cp>pink selection</c> and the tool will be applied exclusively to them."
 		},
+		"show-old-variant" : {
+			"type": "bool",
+			"default": false,
+			"name": "Show the 'old' option",
+			"description": "This is an option that allows you to add source objects to the group, that is <cy>currently</c> specified in the trigger you are configuring. \nNote 1: it will appear in the lower menu under a name 'old' (+groupID)\n Note 2: This setting is disabled by default for less confusion."
+		},
         "fix-next-item-id" : {
 			"type": "bool",
 			"default": true,

@@ -64,8 +64,21 @@ bool isNewGroupPossible(CCArray * objects) {
     for (unsigned i = 0; i < objects->count(); i++) {
         auto groups = static_cast<GameObject*>(objects->objectAtIndex(i))->m_groups;
         if (!groups) continue;
-        if (groups->at(9) != 0) {  
+        if (groups->at(9) != 0) {
             return false;
+        }
+    }
+    return true;
+};
+
+bool isGroupPossible(CCArray * objects, int group) {
+    for (unsigned i = 0; i < objects->count(); i++) {
+        auto groups = static_cast<GameObject*>(objects->objectAtIndex(i))->m_groups;
+        if (!groups) continue;
+        if (groups->at(9) != 0) {
+            if (std::find(groups->begin(), groups->end(), group) == groups->end()) {
+                return false;
+            }
         }
     }
     return true;

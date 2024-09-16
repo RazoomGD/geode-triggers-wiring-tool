@@ -66,8 +66,9 @@ void MyEditorUI::upperMenuActionListener(CCObject * sender) {
     }
     // update m_globalConfig and maybe create new lower menu
     auto config = static_cast<UpperMenuButtonParameters*>(button->getUserObject())->m_config;
-    if (!m_fields->m_globalConfig.m_isFinished || 
-        config.getLowerMenuType() != m_fields->m_globalConfig.m_variant.getLowerMenuType()) {
+    bool lowerMenuTypeChanged = !m_fields->m_globalConfig.m_isFinished || 
+        config.getLowerMenuType() != m_fields->m_globalConfig.m_variant.getLowerMenuType();
+    if (lowerMenuTypeChanged || m_fields->m_modSettings.m_showOldVariant) {
         // then we need new lower menu
         m_fields->m_globalConfig.m_variant = config;
         // reset source objects
@@ -78,12 +79,14 @@ void MyEditorUI::upperMenuActionListener(CCObject * sender) {
         }
         createLowerMenuForVariant(config);
 
-        auto lowerMenu = m_fields->m_lowerMenu;
-        m_fields->m_drawingLayer->addChild(lowerMenu);
-        lowerMenu->setPosition(m_fields->m_objectTarget->getPosition() + ccp(5, -15));
+        m_fields->m_drawingLayer->addChild(m_fields->m_lowerMenu);
+        m_fields->m_lowerMenu->setPosition(m_fields->m_objectTarget->getPosition() + ccp(5, -15));
 
-        m_fields->m_globalConfig.m_isFinished = true;
-        applyToolConfig(true);
+        if (!m_fields->m_globalConfig.m_isFinished) {
+            m_fields->m_globalConfig.m_isFinished = true;
+            applyToolConfig(lowerMenuTypeChanged);
+            // otherwise it was applied when creating the lower menu
+        }
     } else {
         m_fields->m_globalConfig.m_variant = config;
         applyToolConfig(false);
@@ -108,6 +111,18 @@ void MyEditorUI::createLowerMenuForVariant(Variant variant) {
     auto filteredObjects = filterObjectsByType(forObjectsType, m_fields->m_objectsSource, true, this);
     m_fields->m_objectsSourceFiltered = filteredObjects;
 
+    // check which key we are changing
+    int oldVal = 0;
+    if (m_fields->m_modSettings.m_showOldVariant && !variant.m_appendNotOverride) {
+        std::stringstream ss(variant.m_triggerConfigString);
+        std::string key, val;
+        while (std::getline(ss, key, ',') && std::getline(ss, val, ',')) {
+            if (val == "g") break;
+        }
+        auto kvObj = objectToKeyVal(m_fields->m_objectTargetInitial);
+        oldVal = kvObj.contains(key) ? std::stoi(kvObj[key]) : 0;
+    }
+
     std::vector<std::pair<std::string, int>> lowerMenuConfig;
     switch (menuType) {
         case lowerMenuType::selectGroup: {
@@ -119,6 +134,7 @@ void MyEditorUI::createLowerMenuForVariant(Variant variant) {
                 int nextFree = m_fields->m_globalConfig.m_nextFreeGroup;
                 lowerMenuConfig.push_back({std::format("next ({})", nextFree), nextFree});
             }
+            if (oldVal) lowerMenuConfig.push_back({std::format("old ({})", oldVal), oldVal});
             lowerMenuConfig.push_back({"None", -1});
             break;
         }
@@ -157,6 +173,7 @@ void MyEditorUI::createLowerMenuForVariant(Variant variant) {
                 }
             }
             lowerMenuConfig.push_back({std::format("next ({})", nextFreeItem), nextFreeItem});
+            if (oldVal) lowerMenuConfig.push_back({std::format("old ({})", oldVal), oldVal});
             lowerMenuConfig.push_back({"None", -1});
             break;
         }
@@ -169,6 +186,7 @@ void MyEditorUI::createLowerMenuForVariant(Variant variant) {
                 }
             }
             lowerMenuConfig.push_back({std::format("next ({})", nextFreeCollision), nextFreeCollision});
+            if (oldVal) lowerMenuConfig.push_back({std::format("old ({})", oldVal), oldVal});
             lowerMenuConfig.push_back({"None", -1});
             break;
         }
@@ -181,6 +199,7 @@ void MyEditorUI::createLowerMenuForVariant(Variant variant) {
                 }
             }
             lowerMenuConfig.push_back({std::format("next ({})", nextFreeGrad), nextFreeGrad});
+            if (oldVal) lowerMenuConfig.push_back({std::format("old ({})", oldVal), oldVal});
             lowerMenuConfig.push_back({"None", -1});
             break;
         }

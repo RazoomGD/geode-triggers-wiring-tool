@@ -257,5 +257,8 @@ void MyEditorUI::applyToolConfig(bool updateSourceObjects) {
     m_fields->m_objectTargetLastUse = newObj->getSaveString(nullptr);
     EditorUI::selectObject(newObj, true);
     EditorUI::updateButtons(); 
+
+    static int applyCount = 0;
+    log::debug("apply tool config {}", ++applyCount);
 }
 

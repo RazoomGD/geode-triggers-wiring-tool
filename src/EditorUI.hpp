@@ -34,6 +34,7 @@ class $modify(MyEditorUI, EditorUI) {
         bool m_ctrlModifierEnabled = false;
         bool m_smartFilter = false;
         bool m_fixedNextFreeItem = true;
+        bool m_showOldVariant = false;
     };
 
     enum Mode {
