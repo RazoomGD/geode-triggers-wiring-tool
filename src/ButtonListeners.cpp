@@ -9,16 +9,36 @@ void MyEditorUI::onMainButton(CCObject* sender) {
         auto sprite = CCSprite::createWithSpriteFrameName("TWT_tool_on.png"_spr);
         sprite->setScale(oldSprite->getScale());
         btn->setSprite(sprite);
-        showDebugText("Tool is on");
+        showDebugText("Edit mode is on");
     } else {
         auto sprite = CCSprite::createWithSpriteFrameName("TWT_tool_off.png"_spr);
         sprite->setScale(oldSprite->getScale());
         btn->setSprite(sprite);
         m_fields->m_panEditor = false;
         resetTool();
-        showDebugText("Tool is off");
+        showDebugText("Edit mode is off");
     }
 }
+
+void MyEditorUI::onPreviewButton(CCObject* sender) {
+    auto btn = static_cast<CCMenuItemSpriteExtra*>(sender);
+    auto oldSprite = btn->getNormalImage();
+    // m_fields->m_buttonIsActivated = !m_fields->m_buttonIsActivated;
+    if (false /*todo:*/) {
+        auto sprite = CCSprite::createWithSpriteFrameName("TWT_preview_tool_on.png"_spr);
+        sprite->setScale(oldSprite->getScale());
+        btn->setSprite(sprite);
+        showDebugText("Preview mode is on");
+    } else {
+        auto sprite = CCSprite::createWithSpriteFrameName("TWT_preview_tool_off.png"_spr);
+        sprite->setScale(oldSprite->getScale());
+        btn->setSprite(sprite);
+        m_fields->m_panEditor = false;
+        resetTool();
+        showDebugText("Preview mode is off");
+    }
+}
+
 
 void MyEditorUI::onInfoButton(CCObject*) { // todo: change description
 

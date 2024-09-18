@@ -45,6 +45,7 @@ class $modify(MyEditorUI, EditorUI) {
         Mode m_mode = Mode::SetupMode;
         ModSettings m_modSettings;
         CCMenuItemSpriteExtra* m_button = nullptr;
+        CCMenuItemSpriteExtra* m_button2 = nullptr;
         CCLabelBMFont* m_debugLabel = nullptr;
         // for setup mode
         CCDrawNode* m_drawingLayer = nullptr;
@@ -84,6 +85,7 @@ class $modify(MyEditorUI, EditorUI) {
     // BUTTON LISTENERS
 
     void onMainButton(CCObject* sender);
+    void onPreviewButton(CCObject* sender);
     void onInfoButton(CCObject*);
     void onModeChanged(CCObject* sender);
 
@@ -95,6 +97,7 @@ class $modify(MyEditorUI, EditorUI) {
     $override void ccTouchEnded(CCTouch * touch, CCEvent * event);
     $override void undoLastAction(CCObject * p0);
     $override void redoLastAction(CCObject * p0);
+    $override void showUI(bool show);
 
     // TOOL TOUCH LOGIC
 

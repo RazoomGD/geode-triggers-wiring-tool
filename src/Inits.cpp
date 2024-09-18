@@ -52,13 +52,18 @@ void MyEditorUI::initDrawingLayer() {
 
 void MyEditorUI::initDebugLabel() {
     auto debugLabel = CCLabelBMFont::create("", "bigFont.fnt");
+    // btn one
     auto btn = m_fields->m_button;
     auto buttonGlobalCoords = btn->convertToWorldSpace(btn->getPosition());
     auto buttonCoordsOnEditorUI = this->convertToNodeSpace(buttonGlobalCoords);
+    // btn two
+    auto btn2 = m_fields->m_button2;
+    auto buttonGlobalCoords2 = btn->convertToWorldSpace(btn2->getPosition());
+    auto buttonCoordsOnEditorUI2 = this->convertToNodeSpace(buttonGlobalCoords2);
 
     debugLabel->setScale(.5f * btn->getScale());
-    // place debug label right under my button
-    debugLabel->setPosition(buttonCoordsOnEditorUI - 
+    // place debug label right under my buttons
+    debugLabel->setPosition((buttonCoordsOnEditorUI + buttonCoordsOnEditorUI2) / 2 - 
         ccp(0, btn->getContentSize().height / 2 + 10));
     debugLabel->setOpacity(0);
     debugLabel->setID("twt-debug-label");
@@ -83,24 +88,13 @@ void MyEditorUI::initButtons() {
         twtMenu->addChild(smallBtn);
         smallBtn->setZOrder(2);
     }
-    // mode selection buttons
-    // auto setupBtnSpr = ButtonSprite::create("Set up");
-    // setupBtnSpr->setScale(.5);
-    // auto setupBtn = CCMenuItemSpriteExtra::create(
-    //     setupBtnSpr, this, menu_selector(MyEditorUI::onModeChanged));
-    // setupBtn->setTag(Mode::SetupMode);
-
-    // auto previewBtnSpr = ButtonSprite::create("Preview");
-    // previewBtnSpr->setScale(.5);
-    // auto previewBtn = CCMenuItemSpriteExtra::create(
-    //     previewBtnSpr, this, menu_selector(MyEditorUI::onModeChanged));
-    // previewBtn->setTag(Mode::PreviewMode);
 
     // large button 2
-    auto largeBtn2Sprite = CCSprite::createWithSpriteFrameName("TWT_tool_off.png"_spr); // todo: other sprite
+    auto largeBtn2Sprite = CCSprite::createWithSpriteFrameName("TWT_preview_tool_off.png"_spr);
     largeBtn2Sprite->setScale(.91f);
     auto largeBtn2 = CCMenuItemSpriteExtra::create(
-        largeBtn2Sprite, this, menu_selector(MyEditorUI::onMainButton)); // todo: other selector
+        largeBtn2Sprite, this, menu_selector(MyEditorUI::onPreviewButton));
+    m_fields->m_button2 = largeBtn2;
 
     // menu
     twtMenu->setContentWidth(largeBtn->getContentWidth() + largeBtn2->getContentWidth());
@@ -112,14 +106,6 @@ void MyEditorUI::initButtons() {
 
     twtMenu->addChild(largeBtn2);
     largeBtn2->setPosition(largeBtn2->getContentSize() / 2 + ccp(largeBtn2->getContentWidth() * 1.1, 0));
-
-    // twtMenu->addChild(setupBtn);
-    // setupBtn->setPosition(ccp(largeBtn->getContentSize().width + setupBtn->
-    //     getContentSize().width / 2, largeBtn->getContentHeight() * .75));
-
-    // twtMenu->addChild(previewBtn);
-    // previewBtn->setPosition(ccp(largeBtn->getContentSize().width + previewBtn->
-    //     getContentSize().width / 2, largeBtn->getContentHeight() * .25));
 
     auto undoMenu = this->getChildByID("undo-menu");
     undoMenu->setContentSize(undoMenu->getContentSize() + ccp(50, 0));

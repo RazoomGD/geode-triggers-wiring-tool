@@ -78,3 +78,12 @@ void MyEditorUI::redoLastAction(CCObject * p0) {
         MyEditorUI::redoLastAction(p0);
     }
 }
+
+void MyEditorUI::showUI(bool show) {
+    EditorUI::showUI(show);
+    if (auto undoMenu = this->getChildByID("undo-menu")) {
+        if (auto myMenu = static_cast<CCNode*>(undoMenu)->getChildByID("twt-menu")) {
+            myMenu->setVisible(show);
+        }
+    }
+}
