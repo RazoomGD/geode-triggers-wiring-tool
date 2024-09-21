@@ -15,9 +15,10 @@
 #include <geode.custom-keybinds/include/Keybinds.hpp>
 #endif
 
-using namespace geode::prelude;
-
 #include "ToolConfig.hpp"
+#include "previewMode/previewLogic.hpp"
+
+using namespace geode::prelude;
 
 // I was a bit lazy to divide this into several header files (sorry)
 
@@ -67,6 +68,7 @@ class $modify(MyEditorUI, EditorUI) {
         std::deque<unsigned> m_undoTwiceObjUIDs; // for correct work of undo and redo with the tool
         std::deque<unsigned> m_redoTwiceObjUIDs;
         // for preview mode
+        Ref<PreviewLogic> m_previewLogic;
     };
 
     // INITS

@@ -16,6 +16,7 @@ add_library(${PROJECT_NAME} SHARED
     src/ToolMenus.cpp
     src/ToolTouchLogic.cpp
     src/ToolUtils.cpp
+    src/previewMode/previewLogic.cpp
     # Add any extra C++ source files here
 )
 

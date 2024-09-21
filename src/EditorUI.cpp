@@ -10,6 +10,12 @@ bool MyEditorUI::init(LevelEditorLayer * layer) {
     #ifdef GEODE_IS_WINDOWS
         m_fields->m_modSettings.m_ctrlModifierEnabled = Mod::get()->template getSettingValue<bool>("control-key-modifier");
     #endif
+    // init preview mode logic
+    m_fields->m_previewLogic = PreviewLogic::create();
+    if (!m_fields->m_previewLogic) return false;
+    log::debug("successfully created previewLogic class");
+    
+    // init edit mode logic
     initButtons();
     setKeybinds();
     this->schedule(SEL_SCHEDULE(&MyEditorUI::controlTargetObjectCallback), 0.f);
