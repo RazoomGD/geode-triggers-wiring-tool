@@ -1,4 +1,4 @@
-#include "previewLogic.hpp"
+#include "PreviewLogic.hpp"
 
 using namespace geode::prelude;
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ToolConfig.hpp"
+#include "EditLogic.hpp"
 
 using namespace geode::prelude;
 

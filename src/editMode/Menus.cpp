@@ -1,5 +1,6 @@
-#include "EditorUI.hpp"
-#include "ToolUtils.hpp"
+#include "EditLogic.hpp"
+#include "Utils.hpp"
+#include "../EditorUI.hpp"
 
 // UPPER MENU
 
@@ -10,9 +11,9 @@ struct UpperMenuButtonParameters : public CCObject {
     }
 };
 
-void MyEditorUI::createUpperMenu(const std::vector<Variant>& configuration, bool selectFirst, std::set<srcObjType> commonType) {
+void EditLogic::createUpperMenu(const std::vector<Variant>& configuration, bool selectFirst, std::set<srcObjType> commonType) {
     // remove old menu
-    if (m_fields->m_upperMenu) m_fields->m_upperMenu->removeFromParent();
+    if (m_upperMenu) m_upperMenu->removeFromParent();
     // create new menu
     auto menu = CCMenu::create();
     menu->setLayout(ColumnLayout::create()
@@ -23,7 +24,7 @@ void MyEditorUI::createUpperMenu(const std::vector<Variant>& configuration, bool
     menu->setContentSize(CCSizeMake(0, 200));
     menu->setAnchorPoint(ccp(1, 0));
     menu->setTouchPriority(-120);
-    m_fields->m_upperMenu = menu;
+    m_upperMenu = menu;
     // add buttons
     for (unsigned i = 0; i < configuration.size(); i++) {
         auto btnNode = CCNode::create();
@@ -35,7 +36,7 @@ void MyEditorUI::createUpperMenu(const std::vector<Variant>& configuration, bool
         btnNode->setContentSize(label->getScaledContentSize());
 
         auto btn = CCMenuItemSpriteExtra::create(
-            btnNode, this, menu_selector(MyEditorUI::upperMenuActionListener));
+            btnNode, this, menu_selector(EditLogic::upperMenuActionListener));
         btn->setTag(i);
         btn->setUserObject(new UpperMenuButtonParameters(configuration[i]));
         menu->addChild(btn);
@@ -46,11 +47,11 @@ void MyEditorUI::createUpperMenu(const std::vector<Variant>& configuration, bool
 }
 
 // listens to button clicking in upper menu and sets m_config
-void MyEditorUI::upperMenuActionListener(CCObject * sender) {
+void EditLogic::upperMenuActionListener(CCObject * sender) {
     auto button = static_cast<CCMenuItemSpriteExtra*>(sender);
     if (button->getChildByID("marker")) return;
     // clear old marker
-    auto menu = m_fields->m_upperMenu;
+    auto menu = m_upperMenu;
     auto buttons = menu->getChildren();
     for (unsigned i = 0; i < buttons->count(); i++) {
         auto btn = static_cast<CCMenuItemSpriteExtra*>(buttons->objectAtIndex(i));
@@ -66,29 +67,29 @@ void MyEditorUI::upperMenuActionListener(CCObject * sender) {
     }
     // update m_globalConfig and maybe create new lower menu
     auto config = static_cast<UpperMenuButtonParameters*>(button->getUserObject())->m_config;
-    bool lowerMenuTypeChanged = !m_fields->m_globalConfig.m_isFinished || 
-        config.getLowerMenuType() != m_fields->m_globalConfig.m_variant.getLowerMenuType();
-    if (lowerMenuTypeChanged || m_fields->m_modSettings.m_showOldVariant) {
+    bool lowerMenuTypeChanged = !m_globalConfig.m_isFinished || 
+        config.getLowerMenuType() != m_globalConfig.m_variant.getLowerMenuType();
+    if (lowerMenuTypeChanged || m_editorInstance->m_fields->m_modSettings.m_showOldVariant) {
         // then we need new lower menu
-        m_fields->m_globalConfig.m_variant = config;
+        m_globalConfig.m_variant = config;
         // reset source objects
-        for (unsigned i = 0; i < m_fields->m_objectsSource->count(); i++) {
-            auto obj = static_cast<GameObject*>(m_fields->m_objectsSource->objectAtIndex(i));
-            auto objDefaultAttributes = static_cast<TWTObjCopy*>(m_fields->m_objectsSourceCopy->objectAtIndex(i));
+        for (unsigned i = 0; i < m_objectsSource->count(); i++) {
+            auto obj = static_cast<GameObject*>(m_objectsSource->objectAtIndex(i));
+            auto objDefaultAttributes = static_cast<TWTObjCopy*>(m_objectsSourceCopy->objectAtIndex(i));
             myPasteObjectProps(objDefaultAttributes, obj); // restore initial groups
         }
         createLowerMenuForVariant(config);
 
-        m_fields->m_drawingLayer->addChild(m_fields->m_lowerMenu);
-        m_fields->m_lowerMenu->setPosition(m_fields->m_objectTarget->getPosition() + ccp(5, -15));
+        m_drawingLayer->addChild(m_lowerMenu);
+        m_lowerMenu->setPosition(m_objectTarget->getPosition() + ccp(5, -15));
 
-        if (!m_fields->m_globalConfig.m_isFinished) {
-            m_fields->m_globalConfig.m_isFinished = true;
+        if (!m_globalConfig.m_isFinished) {
+            m_globalConfig.m_isFinished = true;
             applyToolConfig(lowerMenuTypeChanged);
-            // otherwise it was applied when creating the lower menu
+            // otherwise it was already applied when creating the lower menu
         }
     } else {
-        m_fields->m_globalConfig.m_variant = config;
+        m_globalConfig.m_variant = config;
         applyToolConfig(false);
     }
 }
@@ -103,23 +104,23 @@ struct LowerMenuButtonParameters : public CCObject {
     }
 };
 
-void MyEditorUI::createLowerMenuForVariant(Variant variant) {
+void EditLogic::createLowerMenuForVariant(Variant variant) {
     // color or group or item or collision block or ...
     auto menuType = variant.getLowerMenuType().first;
     // consider source objects only of this type
     auto forObjectsType = variant.getLowerMenuType().second;
-    auto filteredObjects = filterObjectsByType(forObjectsType, m_fields->m_objectsSource, true, this);
-    m_fields->m_objectsSourceFiltered = filteredObjects;
+    auto filteredObjects = filterObjectsByType(forObjectsType, m_objectsSource, true, m_editorInstance);
+    m_objectsSourceFiltered = filteredObjects;
 
     // check which key we are changing
     int oldVal = 0;
-    if (m_fields->m_modSettings.m_showOldVariant && !variant.m_appendNotOverride) {
+    if (m_editorInstance->m_fields->m_modSettings.m_showOldVariant && !variant.m_appendNotOverride) {
         std::stringstream ss(variant.m_triggerConfigString);
         std::string key, val;
         while (std::getline(ss, key, ',') && std::getline(ss, val, ',')) {
             if (val == "g") break;
         }
-        auto kvObj = objectToKeyVal(m_fields->m_objectTargetInitial);
+        auto kvObj = objectToKeyVal(m_objectTargetInitial);
         oldVal = kvObj.contains(key) ? std::stoi(kvObj[key]) : 0;
     }
 
@@ -131,7 +132,7 @@ void MyEditorUI::createLowerMenuForVariant(Variant variant) {
                 lowerMenuConfig.push_back({std::format("group {}", commonGroups.at(i)), commonGroups.at(i)});
             }
             if (isNewGroupPossible(filteredObjects)) {
-                int nextFree = m_fields->m_globalConfig.m_nextFreeGroup;
+                int nextFree = m_globalConfig.m_nextFreeGroup;
                 lowerMenuConfig.push_back({std::format("next ({})", nextFree), nextFree});
             }
             if (oldVal) lowerMenuConfig.push_back({std::format("old ({})", oldVal), oldVal});
@@ -165,7 +166,7 @@ void MyEditorUI::createLowerMenuForVariant(Variant variant) {
         }
         case lowerMenuType::selectItem: {
             auto allItemIds = getItemsAllIds(filteredObjects);
-            auto nextFreeItem = m_fields->m_modSettings.m_fixedNextFreeItem ?
+            auto nextFreeItem = m_editorInstance->m_fields->m_modSettings.m_fixedNextFreeItem ?
                 getNextFreeItemFixed() : LevelEditorLayer::get()->getNextFreeItemID(nullptr);
             for (unsigned i = 0; i < allItemIds.size(); i++) {
                 if (allItemIds.at(i)) {
@@ -209,9 +210,9 @@ void MyEditorUI::createLowerMenuForVariant(Variant variant) {
     log::debug("Created new lower menu");
 }
 
-void MyEditorUI::createLowerMenu(const std::vector<std::pair<std::string, int>>& configuration, bool selectFirst) {
+void EditLogic::createLowerMenu(const std::vector<std::pair<std::string, int>>& configuration, bool selectFirst) {
     // remove old menu
-    if (m_fields->m_lowerMenu) m_fields->m_lowerMenu->removeFromParent();
+    if (m_lowerMenu) m_lowerMenu->removeFromParent();
     // create new menu
     auto menu = CCMenu::create();
     menu->setLayout(ColumnLayout::create()
@@ -223,7 +224,7 @@ void MyEditorUI::createLowerMenu(const std::vector<std::pair<std::string, int>>&
     menu->setContentSize(CCSizeMake(0, 200));
     menu->setAnchorPoint(ccp(1, 1));
     menu->setTouchPriority(-120);
-    m_fields->m_lowerMenu = menu;
+    m_lowerMenu = menu;
     // add buttons
     for (unsigned i = 0; i < configuration.size(); i++) {
         auto btnNode = CCNode::create();
@@ -234,7 +235,7 @@ void MyEditorUI::createLowerMenu(const std::vector<std::pair<std::string, int>>&
         btnNode->setContentSize(label->getScaledContentSize());
 
         auto btn = CCMenuItemSpriteExtra::create(
-            btnNode, this, menu_selector(MyEditorUI::lowerMenuActionListener));
+            btnNode, this, menu_selector(EditLogic::lowerMenuActionListener));
         btn->setTag(i);
         btn->setUserObject(new LowerMenuButtonParameters(configuration[i]));
 
@@ -246,8 +247,8 @@ void MyEditorUI::createLowerMenu(const std::vector<std::pair<std::string, int>>&
 }
 
 // listens to button clicking in lower menu and sets m_config
-void MyEditorUI::lowerMenuActionListener(CCObject * sender) {
-    auto menu = m_fields->m_lowerMenu;
+void EditLogic::lowerMenuActionListener(CCObject * sender) {
+    auto menu = m_lowerMenu;
     if (static_cast<CCMenuItemSpriteExtra*>(sender)->getChildByID("marker")) return;
     // remove old marker
     auto buttons = menu->getChildren();
@@ -266,7 +267,7 @@ void MyEditorUI::lowerMenuActionListener(CCObject * sender) {
 
     // update m_globalConfig
     auto config = static_cast<LowerMenuButtonParameters*>(button->getUserObject())->m_config;
-    m_fields->m_globalConfig.m_group = config.second;
+    m_globalConfig.m_group = config.second;
 
     applyToolConfig(true);
 }

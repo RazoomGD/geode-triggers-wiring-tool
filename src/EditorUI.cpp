@@ -13,51 +13,36 @@ bool MyEditorUI::init(LevelEditorLayer * layer) {
     // init preview mode logic
     m_fields->m_previewLogic = PreviewLogic::create();
     if (!m_fields->m_previewLogic) return false;
-    log::debug("successfully created previewLogic class");
-    
+
     // init edit mode logic
+    m_fields->m_editLogic = EditLogic::create(this);
+    if (!m_fields->m_editLogic) return false;
+    m_fields->m_editLogic->setID("twt-edit-logic");
+    this->addChild(m_fields->m_editLogic);
+
     initButtons();
     setKeybinds();
-    this->schedule(SEL_SCHEDULE(&MyEditorUI::controlTargetObjectCallback), 0.f);
+
     return true;
 }
 
 bool MyEditorUI::ccTouchBegan(CCTouch * touch, CCEvent * event) {
-    if (toolIsActivated()) {
-        if (m_fields->m_interfaceIsVisible) {
-            resetTool();
-        }
-        auto startedUsingTool = handleTouchStart(touch);
-        if (startedUsingTool) {
-            m_fields->m_interfaceIsVisible = true;
-            return true;
-        } else {
-            return EditorUI::ccTouchBegan(touch, event);
-        }
+    if (m_fields->m_editLogic->handleTouchStart(touch)) {
+        return true;
     } else {
         return EditorUI::ccTouchBegan(touch, event);
     }
 }
 
 void MyEditorUI::ccTouchMoved(CCTouch * touch, CCEvent * event) {
-    if (toolIsActivated() && m_fields->m_interfaceIsVisible) {
-        handleTouchMiddle(touch);
-    } else {
+    if (!m_fields->m_editLogic->handleTouchMiddle(touch)) {
         EditorUI::ccTouchMoved(touch, event);
-        if (m_fields->m_interfaceIsVisible && !m_fields->m_objectTarget) {
-            resetTool();
-        }
     }
 }
 
 void MyEditorUI::ccTouchEnded(CCTouch * touch, CCEvent * event) {
-    if (toolIsActivated() && m_fields->m_interfaceIsVisible) {
-        handleTouchEnd(touch, true);
-    } else {
+    if (!m_fields->m_editLogic->handleTouchEnd(touch, true)) {
         EditorUI::ccTouchEnded(touch, event);
-        if (m_fields->m_interfaceIsVisible && !m_fields->m_objectTarget) {
-            resetTool();
-        }
     }
 }
 

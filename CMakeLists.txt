@@ -11,12 +11,17 @@ add_library(${PROJECT_NAME} SHARED
     src/EditorUI.cpp
     src/EditorUtils.cpp
     src/Inits.cpp
-    src/ToolInterfaceLogic.cpp
-    src/ToolMainLogic.cpp
-    src/ToolMenus.cpp
-    src/ToolTouchLogic.cpp
-    src/ToolUtils.cpp
-    src/previewMode/previewLogic.cpp
+    
+    src/previewMode/PreviewLogic.cpp
+
+    src/editMode/ButtonListeners.cpp
+    src/editMode/EditLogic.cpp
+    src/editMode/Inits.cpp
+    src/editMode/Interface.cpp
+    src/editMode/MainLogic.cpp
+    src/editMode/Menus.cpp
+    src/editMode/TouchLogic.cpp
+    src/editMode/Utils.cpp
     # Add any extra C++ source files here
 )
 
