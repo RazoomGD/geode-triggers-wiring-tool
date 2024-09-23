@@ -1,5 +1,5 @@
 #include "EditLogic.hpp"
-#include "../ToolConfig.hpp"
+#include "EditToolConfig.hpp"
 #include "../EditorUI.hpp"
 #include "Utils.hpp"
 
@@ -29,6 +29,8 @@ bool EditLogic::handleTargetObject() {
     // create and save copies of target object 
     m_objectTargetInitial = targetObj->getSaveString(nullptr);
     m_objectTargetLastUse = m_objectTargetInitial;
+    m_objectTargetTWTCopy = new TWTObjCopy(); 
+    myCopyObjectProps(m_objectTarget, m_objectTargetTWTCopy);
     // set next free group
     m_globalConfig.m_nextFreeGroup = levelLayer->getNextFreeGroupID(nullptr);
     
@@ -44,9 +46,17 @@ bool EditLogic::handleTargetObject() {
     // get configuration for given source and target objects
     if (!CONFIGURATION.contains(targetObj->m_objectID)) {
         // we don't have any options for given object (probably because target is not a trigger)
-        // todo: common config (just copy groups from target to source)
         log::debug("obj not found in map");
-        return false;
+        if (m_editorInstance->m_fields->m_modSettings.m_defaultIsCopyGroup) {
+            auto variants = std::vector<Variant>{copyGroupDefaultVariant};
+            auto types = std::set<srcObjType>{srcObjType::any};
+            createUpperMenu(variants, true, types);
+            m_editorInstance->updateButtons();
+            return true;
+        } else {
+            resetTool();
+            return false;
+        }
     } 
     // find source objects common types
     std::set<objId> srcObjIds;
@@ -107,22 +117,19 @@ bool EditLogic::handleTargetObject() {
             return false;
         }
         createUpperMenu(upperMenuVariants, true, commonTypes);
-        auto upperMenu = m_upperMenu;
-        m_drawingLayer->addChild(upperMenu);
-        upperMenu->setPosition(targetObj->getPosition() + ccp(5, 15));
     }
     return true;
 }
 
 void EditLogic::applyToolConfig(bool updateSourceObjects) {
     if (!m_globalConfig.m_isFinished) return;
-    auto& targetStr = m_globalConfig.m_variant.m_triggerConfigString;
-    auto& conditionalTargetStr = m_globalConfig.m_variant.m_triggerConditionalConfigString;
+    auto targetStr = m_globalConfig.m_variant.m_triggerConfigString;
+    const auto& conditionalTargetStr = m_globalConfig.m_variant.m_triggerConditionalConfigString;
     const auto sourceFunc = m_globalConfig.m_variant.m_srcFuncType;
     const auto group = m_globalConfig.m_group;
     const bool resetToDefault = (group == -1);
     const auto levelLayer = LevelEditorLayer::get();
-    
+
     // source objects
     if (updateSourceObjects) {
         for (unsigned i = 0; i < m_objectsSource->count(); i++) {
@@ -138,12 +145,10 @@ void EditLogic::applyToolConfig(bool updateSourceObjects) {
                 break;
             }
             case sourceFuncType::addGrSM: {
-                // todo: optionally disable this
                 addToGroupSM(group, objectsSource);
                 break;
             }
             case sourceFuncType::addGrAnim: {
-                // and this
                 addToGroupAnim(group, objectsSource);
                 break;
             }
@@ -180,8 +185,17 @@ void EditLogic::applyToolConfig(bool updateSourceObjects) {
                 if (!done) addToGroup(group, objectsSource);
                 break;
             }
+            case sourceFuncType::copyGroup: {
+                addToGroup(group, objectsSource);
+                break;
+            }
             default: break;
         }
+    }
+
+    if (sourceFunc == sourceFuncType::copyGroup) {
+        // on this option we don't need to change target object
+        return;
     }
 
     { // check if target object was changed after previous tool use
@@ -241,6 +255,22 @@ void EditLogic::applyToolConfig(bool updateSourceObjects) {
         return;
     }
     auto newObj = static_cast<GameObject*>(objArray->objectAtIndex(0));
+
+    // if an old target object was in source objects array, new target object should 
+    // be added to m_objectsSource array, m_objectsSourceCopy array and 
+    // m_objectsSourceFiltered array
+    if (m_objectsSource->containsObject(m_objectTarget)) {
+        log::debug("target obj contains in source array");
+        // add to source
+        m_objectsSource->addObject(newObj);
+        // add copy to sourceCopy
+        m_objectsSourceCopy->addObject(m_objectTargetTWTCopy);
+        // add to filtered objects maybe
+        if (m_objectsSourceFiltered->containsObject(m_objectTarget)) {
+            m_objectsSourceFiltered->addObject(newObj);
+        }
+    }
+
     m_editorInstance->selectObject(m_objectTarget, true);
     m_editorInstance->onDeleteSelected(nullptr);
     m_objectTarget = newObj;
@@ -262,6 +292,6 @@ void EditLogic::applyToolConfig(bool updateSourceObjects) {
     m_editorInstance->updateButtons(); 
 
     static int applyCount = 0;
-    log::debug("apply tool config {}", ++applyCount);
+    log::debug("apply tool config {}, group={}", ++applyCount, group);
 }
 

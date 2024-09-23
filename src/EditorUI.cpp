@@ -7,12 +7,15 @@ bool MyEditorUI::init(LevelEditorLayer * layer) {
     m_fields->m_modSettings.m_smartFilter =  Mod::get()->template getSettingValue<bool>("smart-filter");
     m_fields->m_modSettings.m_fixedNextFreeItem =  Mod::get()->template getSettingValue<bool>("fix-next-item-id");
     m_fields->m_modSettings.m_showOldVariant =  Mod::get()->template getSettingValue<bool>("show-old-variant");
+    m_fields->m_modSettings.m_defaultIsCopyGroup =  Mod::get()->template getSettingValue<bool>("default-copy-group");
     #ifdef GEODE_IS_WINDOWS
         m_fields->m_modSettings.m_ctrlModifierEnabled = Mod::get()->template getSettingValue<bool>("control-key-modifier");
     #endif
     // init preview mode logic
-    m_fields->m_previewLogic = PreviewLogic::create();
+    m_fields->m_previewLogic = PreviewLogic::create(this);
     if (!m_fields->m_previewLogic) return false;
+    m_fields->m_previewLogic->setID("twt-preview-logic");
+    this->addChild(m_fields->m_previewLogic);
 
     // init edit mode logic
     m_fields->m_editLogic = EditLogic::create(this);

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../ToolConfig.hpp"
+#include "EditToolConfig.hpp"
 
 #ifdef GEODE_IS_WINDOWS
     #include <geode.custom-keybinds/include/Keybinds.hpp>
@@ -24,18 +24,19 @@ private:
 
     CCPoint m_lineStart;  // both are editor coordinates
     CCPoint m_lineEnd;
-    Ref<CCArray> m_objectsSource = nullptr;  // array of selected objects
     std::pair<CCPoint, CCPoint> m_sourceRectangle;
-    Ref<GameObject> m_objectTarget = nullptr;  // end object
 
-    Ref<CCMenu> m_upperMenu = nullptr;
-    Ref<CCMenu> m_lowerMenu = nullptr;
-
+    Ref<CCArray> m_objectsSource = nullptr;  // array of selected objects
     Ref<CCArray> m_objectsSourceCopy = nullptr;
     Ref<CCArray> m_objectsSourceFiltered = nullptr;
 
+    Ref<GameObject> m_objectTarget = nullptr;  // end object
     std::string m_objectTargetInitial;
     std::string m_objectTargetLastUse;
+    Ref<TWTObjCopy> m_objectTargetTWTCopy; // needed only when source obj array contains target obj
+
+    Ref<CCMenu> m_upperMenu = nullptr;
+    Ref<CCMenu> m_lowerMenu = nullptr;
 
     bool m_buttonIsActivated = false;
     bool m_interfaceIsVisible = false;

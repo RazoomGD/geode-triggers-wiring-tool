@@ -3,11 +3,11 @@
 void MyEditorUI::initDebugLabel() {
     auto debugLabel = CCLabelBMFont::create("", "bigFont.fnt");
     // btn one
-    auto btn = m_fields->m_button;
+    auto btn = m_fields->m_editButton;
     auto buttonGlobalCoords = btn->convertToWorldSpace(btn->getPosition());
     auto buttonCoordsOnEditorUI = this->convertToNodeSpace(buttonGlobalCoords);
     // btn two
-    auto btn2 = m_fields->m_button2;
+    auto btn2 = m_fields->m_previewButton;
     auto buttonGlobalCoords2 = btn->convertToWorldSpace(btn2->getPosition());
     auto buttonCoordsOnEditorUI2 = this->convertToNodeSpace(buttonGlobalCoords2);
 
@@ -23,39 +23,49 @@ void MyEditorUI::initDebugLabel() {
 }
 
 void MyEditorUI::initButtons() {
-    // large button
-    auto largeBtnSprite = CCSprite::createWithSpriteFrameName("TWT_tool_off.png"_spr);
-    largeBtnSprite->setScale(.91f);
-    auto largeBtn = CCMenuItemSpriteExtra::create(
-        largeBtnSprite, this, menu_selector(MyEditorUI::onMainButtonWrapper));
-    m_fields->m_button = largeBtn;
     auto twtMenu = CCMenu::create();
-    // info button
+
+    // edit button
+    auto editBtnSprite = CCSprite::createWithSpriteFrameName("TWT_tool_off.png"_spr);
+    editBtnSprite->setScale(.91f);
+    auto editBtn = CCMenuItemSpriteExtra::create(
+        editBtnSprite, this, menu_selector(MyEditorUI::onMainButtonWrapper));
+    twtMenu->addChild(editBtn);
+    editBtn->setPosition(editBtn->getContentSize() / 2);
+    m_fields->m_editButton = editBtn;
+
+    // preview button 2
+    auto previewBtnSprite = CCSprite::createWithSpriteFrameName("TWT_preview_tool_off.png"_spr);
+    previewBtnSprite->setScale(.91f);
+    auto previewBtn = CCMenuItemSpriteExtra::create(
+        previewBtnSprite, this, menu_selector(MyEditorUI::onPreviewButtonWrapper));
+    twtMenu->addChild(previewBtn);
+    previewBtn->setPosition(previewBtn->getContentSize() / 2 + ccp(previewBtn->getContentWidth() * 1.1, 0));
+    m_fields->m_previewButton = previewBtn;
+    
+    // info buttons
     if (!Mod::get()->template getSettingValue<bool>("hide-info-button")) { 
-        auto smallBtn = CCMenuItemSpriteExtra::create(
-            CCSprite::createWithSpriteFrameName("GJ_infoIcon_001.png"), this,
-            menu_selector(EditLogic::onInfoButton));
-        twtMenu->addChild(smallBtn);
-        smallBtn->setZOrder(2);
+        // edit mode
+        auto editBtnInfoSpr = CCSprite::createWithSpriteFrameName("GJ_infoIcon_001.png");
+        editBtnInfoSpr->setScale(.77f);
+        auto editBtnInfo = CCMenuItemSpriteExtra::create(editBtnInfoSpr, this,
+            menu_selector(MyEditorUI::onInfoButtonWrapper));
+        twtMenu->addChild(editBtnInfo);
+        editBtnInfo->setZOrder(2);
+        // preview mode
+        auto previewBtnInfoSpr = CCSprite::createWithSpriteFrameName("GJ_infoIcon_001.png");
+        previewBtnInfoSpr->setScale(.77f);
+        auto previewBthInfo = CCMenuItemSpriteExtra::create(previewBtnInfoSpr, this,
+            menu_selector(MyEditorUI::onInfoButtonWrapper2));
+        twtMenu->addChild(previewBthInfo);
+        previewBthInfo->setZOrder(2);
+        previewBthInfo->setPositionX(previewBtn->getPositionX() - editBtn->getPositionX());
     }
 
-    // large button 2
-    auto largeBtn2Sprite = CCSprite::createWithSpriteFrameName("TWT_preview_tool_off.png"_spr);
-    largeBtn2Sprite->setScale(.91f);
-    auto largeBtn2 = CCMenuItemSpriteExtra::create(
-        largeBtn2Sprite, this, menu_selector(MyEditorUI::onPreviewButton));
-    m_fields->m_button2 = largeBtn2;
-
     // menu
-    twtMenu->setContentWidth(largeBtn->getContentWidth() + largeBtn2->getContentWidth());
-    twtMenu->setContentHeight(largeBtn->getContentHeight());
+    twtMenu->setContentWidth(editBtn->getContentWidth() + previewBtn->getContentWidth());
+    twtMenu->setContentHeight(editBtn->getContentHeight());
     twtMenu->setID("twt-menu");
-    
-    twtMenu->addChild(largeBtn);
-    largeBtn->setPosition(largeBtn->getContentSize() / 2);
-
-    twtMenu->addChild(largeBtn2);
-    largeBtn2->setPosition(largeBtn2->getContentSize() / 2 + ccp(largeBtn2->getContentWidth() * 1.1, 0));
 
     auto undoMenu = this->getChildByID("undo-menu");
     undoMenu->setContentSize(undoMenu->getContentSize() + ccp(50, 0));
@@ -73,14 +83,24 @@ void MyEditorUI::initButtons() {
 // set keybinds 
 void MyEditorUI::setKeybinds() {
     #ifdef GEODE_IS_WINDOWS 
+    // 'H' for edit button
     this->template addEventListener<keybinds::InvokeBindFilter>(
         [=](keybinds::InvokeBindEvent* event) {
             if (event->isDown()) {
-                m_fields->m_editLogic->onMainButton(m_fields->m_button);
+                m_fields->m_editLogic->onMainButton(m_fields->m_editButton);
             }
             return ListenerResult::Propagate;
         },
-        "twt-activate-tool"_spr);
+        "twt-activate-edit-tool"_spr);
+    // 'J' for preview button
+    this->template addEventListener<keybinds::InvokeBindFilter>(
+        [=](keybinds::InvokeBindEvent* event) {
+            if (event->isDown()) {
+                m_fields->m_previewLogic->onPreviewButton(m_fields->m_previewButton);
+            }
+            return ListenerResult::Propagate;
+        },
+        "twt-activate-preview-tool"_spr);
     #endif
 }
 
@@ -97,10 +117,17 @@ $execute {
         "Triggers Wiring Tool"
     });
     BindManager::get()->registerBindable({
-        "twt-activate-tool"_spr, 
-        "Turn on/off the tool",  
-        "Enables/disables the tool.",
+        "twt-activate-edit-tool"_spr, 
+        "Turn on/off edit mode",  
+        "Enables/disables edit mode.",
         {Keybind::create(KEY_H)},
+        "Triggers Wiring Tool"
+    });
+    BindManager::get()->registerBindable({
+        "twt-activate-preview-tool"_spr, 
+        "Turn on/off preview mode",  
+        "Enables/disables preview mode.",
+        {Keybind::create(KEY_J)},
         "Triggers Wiring Tool"
     });
 }

@@ -44,6 +44,8 @@ void EditLogic::createUpperMenu(const std::vector<Variant>& configuration, bool 
         if (i == 0 && selectFirst) upperMenuActionListener(btn);
     }
     menu->updateLayout();
+    m_drawingLayer->addChild(m_upperMenu);
+    m_upperMenu->setPosition(m_objectTarget->getPosition() + ccp(5, 15));
 }
 
 // listens to button clicking in upper menu and sets m_config
@@ -201,6 +203,17 @@ void EditLogic::createLowerMenuForVariant(Variant variant) {
             }
             lowerMenuConfig.push_back({std::format("next ({})", nextFreeGrad), nextFreeGrad});
             if (oldVal) lowerMenuConfig.push_back({std::format("old ({})", oldVal), oldVal});
+            lowerMenuConfig.push_back({"None", -1});
+            break;
+        }
+        case lowerMenuType::selectCopyGroup: {
+            if (m_objectTarget->m_groups) {
+                for (unsigned i = 0; i < 10; i++) {
+                    short group = m_objectTarget->m_groups->at(i);
+                    if (!group) break;
+                    lowerMenuConfig.push_back({std::format("group {}", group), group});
+                }
+            }
             lowerMenuConfig.push_back({"None", -1});
             break;
         }

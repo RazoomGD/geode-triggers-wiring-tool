@@ -88,6 +88,7 @@ void EditLogic::resetTool() {
     m_objectTarget = nullptr;
     m_objectTargetInitial = "";
     m_objectTargetLastUse = "";
+    m_objectTargetTWTCopy = nullptr;
 
     m_interfaceIsVisible = false;
     // todo: maybe add pan editor = false

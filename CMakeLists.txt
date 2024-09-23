@@ -12,6 +12,7 @@ add_library(${PROJECT_NAME} SHARED
     src/EditorUtils.cpp
     src/Inits.cpp
     
+    src/previewMode/ButtonListeners.cpp
     src/previewMode/PreviewLogic.cpp
 
     src/editMode/ButtonListeners.cpp

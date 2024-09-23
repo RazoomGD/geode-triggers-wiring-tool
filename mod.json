@@ -60,7 +60,13 @@
 			"type": "bool",
 			"default": false,
 			"name": "Show the 'old' option",
-			"description": "This is an option that allows you to add source objects to the group, that is <cy>currently</c> specified in the trigger you are configuring. \nNote 1: it will appear in the lower menu under a name 'old' (+groupID)\n Note 2: This setting is disabled by default for less confusion."
+			"description": "This is an option that allows you to add source objects to the group, that is <cy>currently</c> specified in the trigger you are configuring. This is a very handy option when the trigger already activates a group and you just want to add a new object to this group. \nNote 1: Option will appear in the lower menu under a name 'old' (+groupID).\n Note 2: This setting is disabled by default for less confusion."
+		},
+		"default-copy-group" : {
+			"type": "bool",
+			"default": false,
+			"name": "Default behavior is copy group",
+			"description": "When the <cb>destination object</c> has no settings to change (for example, if the it is a simple block, spike, or some kind of decoration), the tool is not applied by default. But when this setting is enabled, the default action will be a suggestion to copy one of the the <cb>destination object</c> groups to the <cb>source objects</c>.\n Note: <cr>I do not recommend enabling this setting as it is confusing and is not really useful.</c>"
 		},
         "fix-next-item-id" : {
 			"type": "bool",

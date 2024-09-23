@@ -36,6 +36,3 @@ inline int getGradientTriggerId(CCObject * trig);
 inline void setGradientTriggerId(CCObject * trig, int32_t id);
 
 std::string applyDifference(std::string before, std::string after, std::string obj);
-
-
-// void myHook(long long smth);

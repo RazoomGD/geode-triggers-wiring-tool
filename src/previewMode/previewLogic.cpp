@@ -6,15 +6,17 @@ PreviewLogic::PreviewLogic() {
     this->autorelease();
 }
 
+PreviewLogic::~PreviewLogic() {}
+
 bool PreviewLogic::init() {
-    log::debug("init preview");
     return true;
 }
 
-PreviewLogic * PreviewLogic::create() {
+PreviewLogic * PreviewLogic::create(MyEditorUI * editor) {
     auto ret = new (std::nothrow) PreviewLogic();
-    if (ret && ret->init()) {
-        return ret;
+    if (ret) {
+        ret->m_editorInstance = editor;
+        if (ret->init()) return ret;
     }
     delete ret;
     return nullptr;
