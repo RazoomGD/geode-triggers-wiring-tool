@@ -4,10 +4,10 @@
 void EditLogic::initDrawingLayer() {
     auto drawingLayer = CCDrawNode::create();
     drawingLayer->setID("twt-drawing-layer");
-    auto parent = m_editorInstance->getParent()->getChildByID("main-node")->getChildByID("batch-layer");
-    parent->addChild(drawingLayer, 1000);
+    auto batchLayer = LevelEditorLayer::get()->m_objectLayer;
+    batchLayer->addChild(drawingLayer, 1000);
     drawingLayer->setZOrder(3000);
-    parent->updateChildIndexes();
+    batchLayer->updateChildIndexes();
     m_drawingLayer = drawingLayer;
 
     // I have no idea why, but sometimes something 

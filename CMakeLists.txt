@@ -13,6 +13,8 @@ add_library(${PROJECT_NAME} SHARED
     src/Inits.cpp
     
     src/previewMode/ButtonListeners.cpp
+    src/previewMode/Inits.cpp
+    src/previewMode/MainLogic.cpp
     src/previewMode/PreviewLogic.cpp
 
     src/editMode/ButtonListeners.cpp

@@ -11,43 +11,6 @@
 
 using objId = short;
 
-enum srcObjType {
-    any,          // anything (objects)
-    trig,         // triggers
-    anim,         // animated objects
-    keyFrame,     // keyframe
-    areaEffect,   // area triggers
-    item,         // item
-    particle,     // particle generator
-    collectable,  // also resetable
-    sfxTrig,      // sfx trigger
-    collision,    // collision block
-    gradientTrig, // gradient trigger
-};
-
-// hey: don't forget to add a new type to Variant::getLowerMenuType()
-enum sourceFuncType {
-    addGr,        // just add to the group
-    addGrSM,      // add group + set spawn trigger & multi trigger
-    addGrAnim,    // add group + set animateOnTrigger
-    addGrCol,     // exclusively for pulse trigger preview mode (does the same as addGr)
-    color,        // does nothing to source objects
-    setItem,      // sets item id
-    setCollision, // sets collision block id
-    setGradient,  // sets id in gradient trigger
-    honestAddGr,  // add group using honest strategy
-    copyGroup,    // copy groups from target obj to source objects
-};
-
-enum lowerMenuType {
-    selectGroup,
-    selectColor,
-    selectItem,
-    selectCollision,
-    selectGradient,
-    selectCopyGroup,
-};
-
 // Triggers (basically every object you are able to set as spawn trigger & multi trigger)
 const std::set<objId> triggerIDs = {
     105, 744, 900, 29, 30, 915, 2063, 899, 1585, 3033, 3011, 3012, 1817, 3614, 1914, 1913, 3602, 3603, 3018, 

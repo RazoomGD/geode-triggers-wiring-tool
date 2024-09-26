@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../ToolConfig.hpp"
+#include "PreviewConfig.hpp"
 
 #ifdef GEODE_IS_WINDOWS
     #include <geode.custom-keybinds/include/Keybinds.hpp>
@@ -13,7 +13,7 @@ struct MyEditorUI;
 class PreviewLogic : public CCNode {
 private:
     MyEditorUI * m_editorInstance = nullptr;
-    CCDrawNode * m_drawingLayer = nullptr;
+    CCDrawNode * m_previewLayer = nullptr;
 
     bool m_previewIsOn = false;
 
@@ -21,21 +21,25 @@ private:
     PreviewLogic();
     ~PreviewLogic();
 
-    // void initPreviewLayer();
+    bool initPreviewLayer();
     // void setKeybinds();
 
-    // void showPreview(CCObject * center, CCArray * sourceObjects);
+    void drawPreview(GameObject * const center, CCArray * const sourceObjects);
 
-    // void drawLineAndRectangle(CCPoint * startLine, CCPoint * topLeftRect, CCPoint * bottomRightRect);
+    void drawLineAndRectangle(const CCPoint &startLine, const CCPoint &topLeftRect, 
+        const CCPoint &bottomRightRect, std::optional<int> randomColorSeed);
 
     // void resetPreviewMode();
+    void updatePreview();
+
+    void findObjectsOfType(CCArray * const objects, std::vector<SearchResult> &categories);
 
 
 public: 
     bool init();
     static PreviewLogic * create(MyEditorUI * editor);
 
-    void onPreviewButton(CCObject * sender);
+    void togglePreviewMode(CCObject * sender);
     void onInfoButton(CCObject * sender);
 
 };

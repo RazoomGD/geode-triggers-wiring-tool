@@ -96,7 +96,7 @@ void MyEditorUI::setKeybinds() {
     this->template addEventListener<keybinds::InvokeBindFilter>(
         [=](keybinds::InvokeBindEvent* event) {
             if (event->isDown()) {
-                m_fields->m_previewLogic->onPreviewButton(m_fields->m_previewButton);
+                m_fields->m_previewLogic->togglePreviewMode(m_fields->m_previewButton);
             }
             return ListenerResult::Propagate;
         },

@@ -21,7 +21,6 @@ void EditLogic::onMainButton(CCObject * sender) {
 }
 
 void EditLogic::onInfoButton(CCObject *) { // todo: change description
-
     FLAlertLayer::create(
         "Triggers Wiring Tool",
         "todo : description",

@@ -11,7 +11,7 @@ void MyEditorUI::onInfoButtonWrapper(CCObject* sender) {
 
 // preview mode
 void MyEditorUI::onPreviewButtonWrapper(CCObject* sender) {
-    m_fields->m_previewLogic->onPreviewButton(sender);
+    m_fields->m_previewLogic->togglePreviewMode(sender);
 }
 
 void MyEditorUI::onInfoButtonWrapper2(CCObject* sender) {
