@@ -8,6 +8,10 @@ bool MyEditorUI::init(LevelEditorLayer * layer) {
     m_fields->m_modSettings.m_fixedNextFreeItem =  Mod::get()->template getSettingValue<bool>("fix-next-item-id");
     m_fields->m_modSettings.m_showOldVariant =  Mod::get()->template getSettingValue<bool>("show-old-variant");
     m_fields->m_modSettings.m_defaultIsCopyGroup =  Mod::get()->template getSettingValue<bool>("default-copy-group");
+
+    m_fields->m_modSettings.m_previewAllWhenNotSelected =  Mod::get()->template getSettingValue<bool>("preview-all-when-nothing-selected");
+    m_fields->m_modSettings.m_previewModeColorfulLines =  Mod::get()->template getSettingValue<bool>("preview-mode-colorful-lines");
+
     #ifdef GEODE_IS_WINDOWS
         m_fields->m_modSettings.m_ctrlModifierEnabled = Mod::get()->template getSettingValue<bool>("control-key-modifier");
     #endif

@@ -143,14 +143,14 @@ const std::map<objId, std::vector<Variant>> CONFIGURATION = {
     }},
     {3016, { // advanced follow trigger
         {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
-        {"Follow", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Follow", "138,0,200,0,201,0,71,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
     {3660, { // edit advanced follow trigger
         {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
     {3661, { // re-target advanced follow trigger
         {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
-        {"Follow", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Follow", "138,0,200,0,201,71,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
     {3032, { // keyframe object
         {"Spawn", "71,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
@@ -158,24 +158,24 @@ const std::map<objId, std::vector<Variant>> CONFIGURATION = {
     }},
     {3006, { // area move
         {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
-        {"Center", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Center", "538,0,71,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
     {3007, { // area rotate
         {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
-        {"Center", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Center", "538,0,71,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
     {3008, { // area scale
         {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
-        {"Center", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Center", "538,0,71,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
     {3009, { // area fade
         {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
-        {"Center", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Center", "538,0,71,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
     {3010, { // area tint
         {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
         {"Center", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
-        {"Color", "278,0,71,g", {}, sourceFuncType::color, srcObjType::any},
+        {"Color", "538,0,278,0,71,g", {}, sourceFuncType::color, srcObjType::any},
     }},
     {3011, { // edit area move todo: support for area effect id
         {"Group", "355,0,51,g", {}, sourceFuncType::addGr, srcObjType::areaEffect},
@@ -280,14 +280,14 @@ const std::map<objId, std::vector<Variant>> CONFIGURATION = {
     {1815, { // collision trigger
         {"Spawn", "56,1,51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
         {"Toggle", "56,0,51,g", {{{"56", "1"}, "56,1"}}, sourceFuncType::addGr, srcObjType::any},
-        {"Block_A", "80,g", {}, sourceFuncType::setCollision, srcObjType::collision},
-        {"Block_B", "95,g", {}, sourceFuncType::setCollision, srcObjType::collision},
+        {"Block_A", "138,0,200,0,201,0,80,g", {}, sourceFuncType::setCollision, srcObjType::collision},
+        {"Block_B", "201,0,95,g", {}, sourceFuncType::setCollision, srcObjType::collision},
     }},
     {3609, { // instant collision trigger
         {"On_true", "51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
         {"On_false", "71,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
-        {"Block_A", "80,g", {}, sourceFuncType::setCollision, srcObjType::collision},
-        {"Block_B", "95,g", {}, sourceFuncType::setCollision, srcObjType::collision},
+        {"Block_A", "138,0,200,0,201,0,80,g", {}, sourceFuncType::setCollision, srcObjType::collision},
+        {"Block_B", "201,0,95,g", {}, sourceFuncType::setCollision, srcObjType::collision},
     }},
     {3640, { // state block
         {"State_on", "51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
@@ -302,8 +302,8 @@ const std::map<objId, std::vector<Variant>> CONFIGURATION = {
         {"Toggle", "56,0,51,g", {{{"56", "1"}, "56,1"}}, sourceFuncType::addGr, srcObjType::any},
     }},
     {3600, { // end trigger
-        {"Group", "51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
-        {"Target_pos", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Spawn_id", "51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
+        {"End_pos", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
     {2903, { // gradient trigger
         {"Disable", "208,1,209,g", {}, sourceFuncType::setGradient, srcObjType::gradientTrig},
@@ -316,18 +316,21 @@ const std::map<objId, std::vector<Variant>> CONFIGURATION = {
         {"Group", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
     {2905, { // shock wave shader
-        {"Group", "188,1,51,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Group", "138,0,200,0,188,1,51,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
     {2907, { // shock line shader
-        {"Group", "188,1,51,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Group", "138,0,200,0,188,1,51,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
     {2913, { // lens circles shader
-        {"Group", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Group", "138,0,200,51,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
     {2915, { // motion blur shader
-        {"Group", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Group", "138,0,200,0,201,0,51,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
     {2916, { // bulge shader
+        {"Group", "188,1,51,g", {}, sourceFuncType::addGr, srcObjType::any},
+    }},
+    {2917, { // pinch shader
         {"Group", "188,1,51,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
 
@@ -335,6 +338,10 @@ const std::map<objId, std::vector<Variant>> CONFIGURATION = {
  
 /*
 
+1,1815,2,315,3,105,36,1,51,0,10,0.5;
+1,1815,2,315,3,105,36,1,51,0,10,0.5,138,1;
+1,1815,2,315,3,105,36,1,51,0,10,0.5,138,1,200,1;
+1,1815,2,315,3,105,36,1,51,0,10,0.5,138,1,200,1,201,1;
 
 
 */

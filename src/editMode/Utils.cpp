@@ -350,7 +350,7 @@ int getNextFreeBlock() {
     return current;
 }
 
-inline int getGradientTriggerId(CCObject * trig) {
+inline int getGradientTriggerId(CCObject * trig) { // todo: test it for android
     // completely safe
     auto ptr = reinterpret_cast<char*>(trig);
     auto id = *reinterpret_cast<int32_t*>(ptr + 0x748);

@@ -1,4 +1,5 @@
 #include "PreviewLogic.hpp"
+#include "../EditorUI.hpp"
 
 #include <chrono>
 #include <ctime>  
@@ -53,12 +54,35 @@ std::vector<SearchResult> getConfigForSearch(CCArray * queryObjects) {
                     }
                 }
                 if (!goodObj) continue;
-                // todo: map type type checks
+
                 auto searchVal = kvObject.find(config.m_key);
-                if (searchVal != kvObject.end()) {
+                if (searchVal == kvObject.end()) continue;
+                
+                if (config.m_type == fieldType::groupMapField) {
+                    std::stringstream ss((*searchVal).second);
+                    std::string key, val;
+                    while (std::getline(ss, key, '.') && std::getline(ss, val, '.')) {
+                        short num = std::stoi(key);
+                        result.push_back(SearchResult(searchType::groupSearch, num, obj));
+                    }
+                } else {
+                    searchType type;
+                    switch (config.m_type) {
+                        case fieldType::groupIdField: 
+                            type = searchType::groupSearch;
+                            break;
+                        case fieldType::itemIdField: 
+                            type = searchType::itemSearch;
+                            break;
+                        case fieldType::collisionBlockIdField: 
+                            type = searchType::collisionBlockSearch;
+                            break;
+                        default: 
+                            type = searchType::groupSearch; 
+                            break;
+                    }
                     short num = std::stoi((*searchVal).second);
-                    // todo: other types
-                    result.push_back(SearchResult(searchType::groupSearch, num, obj));
+                    result.push_back(SearchResult(type, num, obj));
                 }
             }
         } 
@@ -67,23 +91,18 @@ std::vector<SearchResult> getConfigForSearch(CCArray * queryObjects) {
 }
 
 void PreviewLogic::findObjectsOfType(CCArray * const objects, std::vector<SearchResult> &categories) {
-    // group id + arrays to add objects to
-    // todo сделать ключом pair<objid, type>
-    std::map<short, std::vector<CCArray *>> searchedGroups;
-    for (auto& el : categories) {
-        switch (el.m_searchType) {
-            case searchType::groupSearch: {
-                auto searchGr = searchedGroups.find(el.m_number);
-                if (searchGr == searchedGroups.end()) {
-                    searchedGroups.insert({el.m_number, {el.m_resultObjects}});
-                } else {
-                    searchGr->second.push_back(el.m_resultObjects);
-                }
-                break;
-            }
-            default: break;
-        }
 
+    // group id + type -- arrays to add objects to    
+    std::map<std::pair<short, searchType>, std::vector<CCArray *>> searchedObjects;
+
+    for (auto& el : categories) {
+        std::pair<short, searchType> mapKey({el.m_number, el.m_searchType});
+        auto searchGr = searchedObjects.find(mapKey);
+        if (searchGr == searchedObjects.end()) {
+            searchedObjects.insert({mapKey, {el.m_resultObjects}});
+        } else {
+            searchGr->second.push_back(el.m_resultObjects);
+        }
     }
 
     for (unsigned i = 0; i < objects->count(); i++) {
@@ -92,11 +111,21 @@ void PreviewLogic::findObjectsOfType(CCArray * const objects, std::vector<Search
         if (obj->m_groups) {
             for (unsigned i = 0; i < obj->m_groupCount; i++) {
                 short group = obj->m_groups->at(i);
-                auto searchGr = searchedGroups.find(group);
-                if (searchGr != searchedGroups.end()) {
+                auto searchGr = searchedObjects.find(std::pair{group, searchType::groupSearch});
+                if (searchGr != searchedObjects.end()) {
                     for (auto& objArray : searchGr->second) {
                         objArray->addObject(obj);
                     }
+                }
+            }
+        }
+        if (obj->m_objectID == itemObjID || obj->m_objectID == collisionBlockID) {
+            auto itemId = static_cast<EffectGameObject*>(obj)->m_itemID; // this is collision id as well
+            auto type = (obj->m_objectID == itemObjID) ? searchType::itemSearch : searchType::collisionBlockSearch;
+            auto searchItem = searchedObjects.find(std::pair{itemId, type});
+            if (searchItem != searchedObjects.end()) {
+                for (auto& objArray : searchItem->second) {
+                    objArray->addObject(obj);
                 }
             }
         }
@@ -110,6 +139,7 @@ void PreviewLogic::drawPreview(GameObject * const center, CCArray * const source
     int topY = INT_MIN;
     int rightX = INT_MIN;
     int bottomY = INT_MAX;
+    unsigned sourceObjectsUniqueSum = 0; // for the same random color for same source objects
     for (unsigned i = 0; i < sourceObjects->count(); i++) {
         auto obj = static_cast<GameObject*>(sourceObjects->objectAtIndex(i));
         auto bound = obj->boundingBox();
@@ -117,12 +147,14 @@ void PreviewLogic::drawPreview(GameObject * const center, CCArray * const source
         if (bound.getMinX() < leftX) leftX = bound.getMinX();
         if (bound.getMaxY() > topY) topY = bound.getMaxY();
         if (bound.getMinY() < bottomY) bottomY = bound.getMinY();
+        // for random color
+        if (m_editorInstance->m_fields->m_modSettings.m_previewModeColorfulLines) 
+            sourceObjectsUniqueSum += obj->m_uniqueID;
     }
     auto topLeft = ccp(leftX, topY);
     auto bottomRight = ccp(rightX, bottomY);
     auto lineStart = center->getPosition();
-    // todo: setting for this
-    std::optional<int> randomColorSeed = true ? center->m_uniqueID : std::optional<int>{};
+    std::optional<int> randomColorSeed = sourceObjectsUniqueSum ? sourceObjectsUniqueSum : std::optional<int>{};
     drawLineAndRectangle(lineStart, topLeft - ccp(3, -3), bottomRight + ccp(3, -3), randomColorSeed);
 }
 
@@ -162,7 +194,7 @@ void PreviewLogic::drawLineAndRectangle(const CCPoint &startLine, const CCPoint 
     } else {
         lineEnd = ccp(lineStartX, lineStartY);
     }
-    
+
     union {
         uint8_t values[3] = {128, 128, 128};
         size_t random;

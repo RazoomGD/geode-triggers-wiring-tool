@@ -27,6 +27,8 @@ class $modify(MyEditorUI, EditorUI) {
         bool m_fixedNextFreeItem = true;
         bool m_showOldVariant = false;
         bool m_defaultIsCopyGroup = false;
+        bool m_previewModeColorfulLines = false;
+        bool m_previewAllWhenNotSelected = true;
     };
 
     struct Fields {
