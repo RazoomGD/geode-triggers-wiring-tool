@@ -128,12 +128,6 @@ void setCollisionId(int id, CCArray * objects) {
     }
 }
 
-void setGradientId(int id, CCArray * objects) {
-    for (unsigned i = 0; i < objects->count(); i++) {
-        setGradientTriggerId(objects->objectAtIndex(i), id);
-    }
-}
-
 // copy 1)groups todo: 2)spawn, multi trigger, itemID, animate on trigger
 void myCopyObjectProps(GameObject * from, TWTObjCopy * to) {
     if (from->m_groups) {
@@ -157,9 +151,6 @@ void myCopyObjectProps(GameObject * from, TWTObjCopy * to) {
     if (objTypes.contains(srcObjType::collision)) {
         to->m_collisionID = static_cast<EffectGameObject*>(from)->m_itemID;
         to->m_isCollisionDyn = static_cast<EffectGameObject*>(from)->m_isDynamicBlock;
-    }
-    if (objTypes.contains(srcObjType::gradientTrig)) {
-        to->m_gradientID = getGradientTriggerId(from);
     }
 };
 
@@ -188,9 +179,6 @@ void myPasteObjectProps(TWTObjCopy * from, GameObject * to) {
         static_cast<EffectGameObject*>(to)->m_isDynamicBlock = isDyn;
         static_cast<CCLabelBMFont*>(to->getChildren()->objectAtIndex(0))
             ->setString((std::format("{}{}", *(from->m_collisionID), (isDyn ? "." : "")).c_str()));
-    }
-    if (from->m_gradientID) {
-        setGradientTriggerId(to, *(from->m_gradientID));
     }
 }
 
@@ -232,17 +220,6 @@ std::vector<int> getCollisionsAllIds(CCArray * objects) {
         collisionIds.insert(colBlock->m_itemID);
     }
     return std::vector<int>(collisionIds.begin(), collisionIds.end());
-};
-
-std::vector<int> getGradientsAllIds(CCArray * objects) {
-    std::set<int> gradIds;
-    for (unsigned i = 0; i < objects->count(); i++) {
-        auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
-        if (obj->m_objectID != gradientTriggerId) continue;
-        auto id = getGradientTriggerId(obj);
-        gradIds.insert(id);
-    }
-    return std::vector<int>(gradIds.begin(), gradIds.end());
 };
 
 std::optional<int> getCommonBaseColor(CCArray * objects) {
@@ -348,19 +325,6 @@ int getNextFreeBlock() {
         current++;
     }
     return current;
-}
-
-inline int getGradientTriggerId(CCObject * trig) { // todo: test it for android
-    // completely safe
-    auto ptr = reinterpret_cast<char*>(trig);
-    auto id = *reinterpret_cast<int32_t*>(ptr + 0x748);
-    return id;
-}
-
-inline void setGradientTriggerId(CCObject * trig, int32_t id) {
-    // completely safe 2
-    auto ptr = reinterpret_cast<char*>(trig);
-    *reinterpret_cast<int32_t*>(ptr + 0x748) = id;
 }
 
 std::map<std::string, std::string> objectToKeyVal(std::string objSaveString) {

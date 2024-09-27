@@ -9,13 +9,12 @@ void EditLogic::onMainButton(CCObject * sender) {
         auto sprite = CCSprite::createWithSpriteFrameName("TWT_tool_on.png"_spr);
         sprite->setScale(oldSprite->getScale());
         btn->setSprite(sprite);
+        resetTool();
         m_editorInstance->showDebugText("Edit mode is on");
     } else {
         auto sprite = CCSprite::createWithSpriteFrameName("TWT_tool_off.png"_spr);
         sprite->setScale(oldSprite->getScale());
         btn->setSprite(sprite);
-        // m_fields->m_panEditor = false;
-        resetTool();
         m_editorInstance->showDebugText("Edit mode is off");
     }
 }

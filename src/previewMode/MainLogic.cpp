@@ -9,13 +9,24 @@ std::vector<SearchResult> getConfigForSearch(CCArray * previewObjects);
 
 void PreviewLogic::updatePreview() {
     auto timeStart = std::chrono::system_clock::now();
-    
+
     m_previewLayer->clear();
-    auto objects = LevelEditorLayer::get()->m_objects;
-    log::debug("objects total: {}", objects->count());
+
+    CCArray * objects;
+    auto preSelected = m_editorInstance->getSelectedObjects();
+    auto allObjects = LevelEditorLayer::get()->m_objects;
+    if (preSelected &&  preSelected->count()) {
+        objects = preSelected;
+    } else if (m_editorInstance->m_fields->m_modSettings.m_previewAllWhenNotSelected) {
+        objects = allObjects;
+    } else {
+        m_editorInstance->showDebugText("No objects selected");
+        return;
+    }
 
     auto searchConfig = getConfigForSearch(objects);
-    findObjectsOfType(objects, searchConfig);
+    findObjectsOfType(allObjects, searchConfig); // this function adds the result of search to searchConfig
+
     for (auto& config : searchConfig) {
         if (config.m_resultObjects->count()) {
             drawPreview(config.m_queryObject, config.m_resultObjects);
@@ -24,7 +35,7 @@ void PreviewLogic::updatePreview() {
 
     auto timeEnd = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsedSeconds = timeEnd - timeStart;
-    log::debug("Preview updated in {} sec", elapsedSeconds.count());
+    log::debug("Preview for {} objects updated in {} sec", objects->count(), elapsedSeconds.count());
 }
 
 std::vector<SearchResult> getConfigForSearch(CCArray * queryObjects) {
@@ -139,7 +150,7 @@ void PreviewLogic::drawPreview(GameObject * const center, CCArray * const source
     int topY = INT_MIN;
     int rightX = INT_MIN;
     int bottomY = INT_MAX;
-    unsigned sourceObjectsUniqueSum = 0; // for the same random color for same source objects
+    unsigned srcObjUniqSum = 0; // for the same random color for same source objects
     for (unsigned i = 0; i < sourceObjects->count(); i++) {
         auto obj = static_cast<GameObject*>(sourceObjects->objectAtIndex(i));
         auto bound = obj->boundingBox();
@@ -148,13 +159,15 @@ void PreviewLogic::drawPreview(GameObject * const center, CCArray * const source
         if (bound.getMaxY() > topY) topY = bound.getMaxY();
         if (bound.getMinY() < bottomY) bottomY = bound.getMinY();
         // for random color
-        if (m_editorInstance->m_fields->m_modSettings.m_previewModeColorfulLines) 
-            sourceObjectsUniqueSum += obj->m_uniqueID;
+        if (m_editorInstance->m_fields->m_modSettings.m_previewModeColorfulLines) {
+            srcObjUniqSum += obj->m_uniqueID;
+            srcObjUniqSum = (srcObjUniqSum >> 5) | (srcObjUniqSum << (sizeof(unsigned)*8 - 5)); // rotate
+        }
     }
     auto topLeft = ccp(leftX, topY);
     auto bottomRight = ccp(rightX, bottomY);
     auto lineStart = center->getPosition();
-    std::optional<int> randomColorSeed = sourceObjectsUniqueSum ? sourceObjectsUniqueSum : std::optional<int>{};
+    std::optional<int> randomColorSeed = srcObjUniqSum ? srcObjUniqSum : std::optional<int>{};
     drawLineAndRectangle(lineStart, topLeft - ccp(3, -3), bottomRight + ccp(3, -3), randomColorSeed);
 }
 
@@ -206,7 +219,13 @@ void PreviewLogic::drawLineAndRectangle(const CCPoint &startLine, const CCPoint 
     m_previewLayer->drawRect(topLeftRect, bottomRightRect, 
         ccc4f(0, 0, 0, 0), 1.f, color);
 
-    m_previewLayer->drawSegment(startLine,lineEnd, 1.f, color);
+    m_previewLayer->drawSegment(startLine, lineEnd, 1.f, color);
+    // auto startPoint = ccp(lineStartX, lineStartY);
+    // auto tmp = ccp(50, 50);
+    // CCPoint line[] = {tmp, startPoint, lineEnd};
+    // m_previewLayer->drawLines(line, 2, 1.f, color);
+    // m_previewLayer->drawPolygon(line, 3, ccc4f(0,0,0,0), 1.f, color);
+    // log::debug("draw poligon");
 }
 
 

@@ -17,6 +17,11 @@ CCPoint MyEditorUI::screenToEditorLayerPosition(CCPoint screenPoint) {
 }
 
 bool MyEditorUI::honestAddToGroup(int group, CCArray * objects) {
+    for (unsigned i = 0; i < objects->count(); i++) {
+        auto obj = static_cast<GameObject*>(objects->objectAtIndex(i));
+        obj->addToGroup(group);
+    }
+    return true; // todo:
     EditorUI::editGroup(nullptr);
     auto setGrLayer = static_cast<SetGroupIDLayer*>(
         CCScene::get()->getChildByID("SetGroupIDLayer"));

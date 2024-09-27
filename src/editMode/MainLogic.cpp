@@ -25,6 +25,10 @@ bool EditLogic::handleTargetObject() {
         // this may happen if target object has linked objects
         m_editorInstance->showDebugText("Multiple target objects\naren't supported yet", 1.f);
         return false;
+    } else if (m_editorInstance->getSelectedObjects()->count() < 1) {
+        // this may happen when select filter is enabled
+        m_editorInstance->showDebugText("No objects selected");
+        return false;
     }
     // create and save copies of target object 
     m_objectTargetInitial = targetObj->getSaveString(nullptr);
@@ -174,10 +178,6 @@ void EditLogic::applyToolConfig(bool updateSourceObjects) {
             }
             case sourceFuncType::setCollision: {
                 setCollisionId(group, objectsSource);
-                break;
-            }
-            case sourceFuncType::setGradient: {
-                setGradientId(group, objectsSource);
                 break;
             }
             case sourceFuncType::honestAddGr: {

@@ -42,7 +42,7 @@ bool EditLogic::handleTouchStart(const CCTouch * const touch) {
         }
     }
 
-    if (sourceObjects) {
+    if (sourceObjects && sourceObjects->count()) {
         m_editorInstance->deselectAll();
         for (unsigned i = 0; i < sourceObjects->count(); i++) {
             auto obj = static_cast<GameObject*>(sourceObjects->objectAtIndex(i));
@@ -118,10 +118,7 @@ bool EditLogic::handleTouchEnd(bool select, bool showDebug) {
             resetTool();
         }
         return false;
-    }
-
-
-    
+    }    
 }
 
 

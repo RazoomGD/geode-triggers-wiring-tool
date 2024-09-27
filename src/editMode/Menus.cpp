@@ -193,19 +193,6 @@ void EditLogic::createLowerMenuForVariant(Variant variant) {
             lowerMenuConfig.push_back({"None", -1});
             break;
         }
-        case lowerMenuType::selectGradient: {
-            auto allGradIds = getGradientsAllIds(filteredObjects);
-            auto nextFreeGrad = LevelEditorLayer::get()->getNextFreeGradientID(nullptr);
-            for (unsigned i = 0; i < allGradIds.size(); i++) {
-                if (allGradIds.at(i)) {
-                    lowerMenuConfig.push_back({std::format("grad {}", allGradIds.at(i)), allGradIds.at(i)});
-                }
-            }
-            lowerMenuConfig.push_back({std::format("next ({})", nextFreeGrad), nextFreeGrad});
-            if (oldVal) lowerMenuConfig.push_back({std::format("old ({})", oldVal), oldVal});
-            lowerMenuConfig.push_back({"None", -1});
-            break;
-        }
         case lowerMenuType::selectCopyGroup: {
             if (m_objectTarget->m_groups) {
                 for (unsigned i = 0; i < 10; i++) {

@@ -18,7 +18,6 @@ void addToGroupSM(int group, CCArray * objects);
 void addToGroupAnim(int group, CCArray * objects);
 void setItemId(int id, CCArray * objects);
 void setCollisionId(int id, CCArray * objects);
-void setGradientId(int id, CCArray * objects);
 
 void myCopyObjectProps(GameObject * from, TWTObjCopy * to);
 void myPasteObjectProps(TWTObjCopy * from, GameObject * to);
@@ -32,7 +31,5 @@ std::optional<int> getCommonDetailColor(CCArray * objects);
 
 int getNextFreeItemFixed();
 int getNextFreeBlock();
-inline int getGradientTriggerId(CCObject * trig);
-inline void setGradientTriggerId(CCObject * trig, int32_t id);
 
 std::string applyDifference(std::string before, std::string after, std::string obj);

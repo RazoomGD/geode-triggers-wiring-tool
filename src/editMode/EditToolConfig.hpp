@@ -59,13 +59,13 @@ struct TWTObjCopy : public cocos2d::CCObject {
     std::optional<int> m_gradientID;
 };
 
-const struct Condition {
+struct Condition {
     std::pair<std::string, std::string> m_condition; // key, value (value "" == any)
     std::string m_yes;
     std::string m_no;
 };
 
-const struct Variant {
+struct Variant {
     std::string m_name; // shown in menu
     std::string m_triggerConfigString;
     std::vector<Condition> m_triggerConditionalConfigString;
@@ -305,13 +305,13 @@ const std::map<objId, std::vector<Variant>> CONFIGURATION = {
         {"Spawn_id", "51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
         {"End_pos", "71,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},
-    {2903, { // gradient trigger
-        {"Disable", "208,1,209,g", {}, sourceFuncType::setGradient, srcObjType::gradientTrig},
-        {"Point_1", "203,g", {}, sourceFuncType::honestAddGr, srcObjType::any},
-        {"Point_2", "204,g", {}, sourceFuncType::honestAddGr, srcObjType::any},
-        {"Point_3", "205,g", {}, sourceFuncType::honestAddGr, srcObjType::any},
-        {"Point_4", "206,g", {}, sourceFuncType::honestAddGr, srcObjType::any},
-    }},
+    // {2903, { // gradient trigger
+    //     {"Disable", "208,1,209,g", {}, sourceFuncType::setGradient, srcObjType::gradientTrig},
+    //     {"Point_1", "203,g", {}, sourceFuncType::honestAddGr, srcObjType::any},
+    //     {"Point_2", "204,g", {}, sourceFuncType::honestAddGr, srcObjType::any},
+    //     {"Point_3", "205,g", {}, sourceFuncType::honestAddGr, srcObjType::any},
+    //     {"Point_4", "206,g", {}, sourceFuncType::honestAddGr, srcObjType::any},
+    // }},
     {3022, { // teleport trigger
         {"Group", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
     }},

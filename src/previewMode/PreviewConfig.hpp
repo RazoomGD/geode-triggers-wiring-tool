@@ -19,19 +19,19 @@ enum searchType {
     // gradientSearch,
 };
 
-const struct ConditionPreview {
+struct ConditionPreview {
     std::string m_conditionKey;
     std::string m_conditionValue; // "" - any, "0" - no such key
 };
 
-const struct ObjField {
+struct ObjField {
     std::string m_name;
     std::string m_key;
     fieldType m_type;
     std::vector<ConditionPreview> m_conditions; // all other required keys
 };
 
-const struct SearchResult {
+struct SearchResult {
     SearchResult(searchType searchType, short number, GameObject * queryObj) : 
         m_searchType(searchType), m_number(number), m_queryObject(queryObj) {
         this->m_resultObjects = CCArray::create();
