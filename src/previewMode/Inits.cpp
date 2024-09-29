@@ -2,13 +2,10 @@
 #include "../EditorUI.hpp"
 
 bool PreviewLogic::initPreviewLayer() {
-    auto previewLayer = CCDrawNode::create();
-    previewLayer->setID("twt-preview-layer");
+    m_previewLayer = CCDrawNode::create();
+    m_previewLayer->setID("twt-preview-layer");
     auto batchLayer = LevelEditorLayer::get()->m_objectLayer;
-    batchLayer->addChild(previewLayer, 1000);
-    previewLayer->setZOrder(3000);
-    batchLayer->updateChildIndexes();
-    m_previewLayer = previewLayer;
+    batchLayer->addChild(m_previewLayer, 3000);
 
     // I have no idea why, but sometimes something 
     // happens and the line drawing is not working (next code tests it)

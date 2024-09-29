@@ -160,8 +160,7 @@ void PreviewLogic::drawPreview(GameObject * const center, CCArray * const source
         if (bound.getMinY() < bottomY) bottomY = bound.getMinY();
         // for random color
         if (m_editorInstance->m_fields->m_modSettings.m_previewModeColorfulLines) {
-            srcObjUniqSum += obj->m_uniqueID;
-            srcObjUniqSum = (srcObjUniqSum >> 5) | (srcObjUniqSum << (sizeof(unsigned)*8 - 5)); // rotate
+            srcObjUniqSum += obj->m_uID * obj->m_uniqueID;
         }
     }
     auto topLeft = ccp(leftX, topY);
@@ -210,22 +209,15 @@ void PreviewLogic::drawLineAndRectangle(const CCPoint &startLine, const CCPoint 
 
     union {
         uint8_t values[3] = {128, 128, 128};
-        size_t random;
+        uint32_t random;
     } rgb;
     if (randomColorSeed) {
-        rgb.random = std::hash<int>{}(*randomColorSeed);
+        uint32_t seed = (*randomColorSeed);
+        rgb.random = (seed*2765453761)^((seed<<16)*1731603751);
     }
     auto color = ccc4f(rgb.values[0], rgb.values[1], rgb.values[2], 155);
+
     m_previewLayer->drawRect(topLeftRect, bottomRightRect, 
         ccc4f(0, 0, 0, 0), 1.f, color);
-
-    m_previewLayer->drawSegment(startLine, lineEnd, 1.f, color);
-    // auto startPoint = ccp(lineStartX, lineStartY);
-    // auto tmp = ccp(50, 50);
-    // CCPoint line[] = {tmp, startPoint, lineEnd};
-    // m_previewLayer->drawLines(line, 2, 1.f, color);
-    // m_previewLayer->drawPolygon(line, 3, ccc4f(0,0,0,0), 1.f, color);
-    // log::debug("draw poligon");
+    m_previewLayer->drawSegment(startLine, lineEnd, 1.f, color);   
 }
-
-

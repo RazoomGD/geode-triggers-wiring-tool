@@ -54,6 +54,20 @@
 			"description": "When enabled, you can hold 'Ctrl' to use the tool",
 			"platforms": ["win"]
 		},
+		"double-click-modifier" : {
+			"type": "bool",
+			"default": true,
+			"name": "Double-click to use the tool",
+			"description": "Double-click and then hold (without taking your finger off) to start using the tool",
+			"platforms": ["android", "android32", "android64"]
+		},
+		"auto-disable" : {
+			"type": "bool",
+			"default": false,
+			"name": "Auto disable",
+			"description": "Automatically disable the tool after each use (can prevent accidental use of the tool, especially on mobile)",
+			"platforms": ["android", "android32", "android64"]
+		},
 		"preview-color" : {
 			"type": "bool",
 			"default": true,

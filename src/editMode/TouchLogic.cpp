@@ -1,7 +1,8 @@
 #include "EditLogic.hpp"
 #include "../EditorUI.hpp"
 
-bool EditLogic::handleTouchStart(const CCTouch * const touch) {
+bool EditLogic::handleTouchStart(const CCTouch * const touch, bool forceActivateOnce) {
+    if (forceActivateOnce) m_toolActivatedForOnce = true;
 
     if (!toolIsActivated()) return false;
 
@@ -74,6 +75,7 @@ bool EditLogic::handleTouchStart(const CCTouch * const touch) {
         return true;
     }
     m_editorInstance->showDebugText("No objects selected");
+    m_toolActivatedForOnce = false;
     return false;
 }
 
@@ -85,7 +87,6 @@ bool EditLogic::handleTouchMiddle(const CCTouch * const touch) {
         updateLineAndRect(false);
         return true;
     } else {
-        // EditorUI::ccTouchMoved(touch, event);
         if (m_interfaceIsVisible && !m_objectTarget) {
             resetTool(); 
         }
@@ -111,12 +112,16 @@ bool EditLogic::handleTouchEnd(bool select, bool showDebug) {
         } else {
             resetTool();
         }
+        
+        if (m_editorInstance->m_fields->m_modSettings.m_autoDisable && m_buttonIsActivated) 
+            onMainButton(m_editorInstance->m_fields->m_editButton, false);
+        m_toolActivatedForOnce = false;
         return true;
     } else {
-        // EditorUI::ccTouchEnded(touch, event);
         if (m_interfaceIsVisible && !m_objectTarget) {
             resetTool();
         }
+        m_toolActivatedForOnce = false;
         return false;
     }    
 }

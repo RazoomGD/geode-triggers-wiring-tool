@@ -1,5 +1,9 @@
 #include "EditorUI.hpp"
 
+#include <chrono>
+#include <ctime>  
+#include <functional>
+
 bool MyEditorUI::init(LevelEditorLayer * layer) {
     if (!EditorUI::init(layer)) return false;
     // init mod settings
@@ -9,12 +13,16 @@ bool MyEditorUI::init(LevelEditorLayer * layer) {
     m_fields->m_modSettings.m_showOldVariant =  Mod::get()->template getSettingValue<bool>("show-old-variant");
     m_fields->m_modSettings.m_defaultIsCopyGroup =  Mod::get()->template getSettingValue<bool>("default-copy-group");
 
+    m_fields->m_modSettings.m_autoDisable =  Mod::get()->template getSettingValue<bool>("auto-disable");
+    m_fields->m_modSettings.m_doubleClickModifier =  Mod::get()->template getSettingValue<bool>("double-click-modifier");
+
     m_fields->m_modSettings.m_previewAllWhenNotSelected =  Mod::get()->template getSettingValue<bool>("preview-all-when-nothing-selected");
     m_fields->m_modSettings.m_previewModeColorfulLines =  Mod::get()->template getSettingValue<bool>("preview-mode-colorful-lines");
 
     #ifdef GEODE_IS_WINDOWS
         m_fields->m_modSettings.m_ctrlModifierEnabled = Mod::get()->template getSettingValue<bool>("control-key-modifier");
     #endif
+
     // init preview mode logic
     m_fields->m_previewLogic = PreviewLogic::create(this);
     if (!m_fields->m_previewLogic) return false;
@@ -34,7 +42,12 @@ bool MyEditorUI::init(LevelEditorLayer * layer) {
 }
 
 bool MyEditorUI::ccTouchBegan(CCTouch * touch, CCEvent * event) {
-    if (m_fields->m_editLogic->handleTouchStart(touch)) {
+    static auto lastClickTime = std::chrono::system_clock::from_time_t(0);
+    auto thisClickTime = std::chrono::system_clock::now();
+    std::chrono::duration<double> elapsedSeconds = thisClickTime - lastClickTime;
+    lastClickTime = thisClickTime;
+    bool doubleClick = m_fields->m_modSettings.m_doubleClickModifier && (elapsedSeconds.count() <= 0.5);
+    if (m_fields->m_editLogic->handleTouchStart(touch, doubleClick)) {
         return true;
     } else {
         return EditorUI::ccTouchBegan(touch, event);

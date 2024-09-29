@@ -39,6 +39,7 @@ private:
     Ref<CCMenu> m_lowerMenu = nullptr;
 
     bool m_buttonIsActivated = false;
+    bool m_toolActivatedForOnce = false;
     bool m_interfaceIsVisible = false;
     bool m_panEditor = false;
 
@@ -70,10 +71,10 @@ public:
     bool init();
     static EditLogic * create(MyEditorUI * editor);
 
-    void onMainButton(CCObject * sender);
+    void onMainButton(CCObject * sender, bool showDebug=true);
     void onInfoButton(CCObject * sender);
 
-    bool handleTouchStart(const CCTouch * const touch);
+    bool handleTouchStart(const CCTouch * const touch, bool forceActivateOnce);
     bool handleTouchMiddle(const CCTouch * const touch);
     bool handleTouchEnd(bool select, bool showDebug);
 

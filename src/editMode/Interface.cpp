@@ -2,9 +2,6 @@
 #include "../EditorUI.hpp"
 
 void EditLogic::updateLineAndRect(bool clear) {
-    if (!m_drawingLayer) {
-        initDrawingLayer();
-    }
     m_drawingLayer->clear();
     if (!clear) {
         m_drawingLayer->drawSegment(
@@ -14,11 +11,6 @@ void EditLogic::updateLineAndRect(bool clear) {
         m_drawingLayer->drawRect(
             m_sourceRectangle.first,
             m_sourceRectangle.second,
-            ccc4f(0, 0, 0, 0), 1.f, 
-            ccc4f(128, 128, 128, 155));
-        // tmp
-        m_drawingLayer->drawRect(
-            m_lineStart, m_lineEnd,
             ccc4f(0, 0, 0, 0), 1.f, 
             ccc4f(128, 128, 128, 155));
     }
@@ -97,7 +89,6 @@ void EditLogic::resetTool() {
 
     m_interfaceIsVisible = false;
     m_globalConfig.m_isFinished = false;
-    // todo: maybe add pan editor = false
 
     m_editorInstance->updateButtons();
     log::debug("tool reset");

@@ -9,6 +9,8 @@ PreviewLogic::PreviewLogic() {
 PreviewLogic::~PreviewLogic() {}
 
 bool PreviewLogic::init() {
+    initPreviewLayer();
+    log::debug("init preview logic");
     return true;
 }
 

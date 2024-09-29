@@ -8,9 +8,9 @@ bool EditLogic::toolIsActivated() {
     #ifdef GEODE_IS_WINDOWS 
         return ((m_editorInstance->m_fields->m_modSettings.m_ctrlModifierEnabled && 
             CCKeyboardDispatcher::get()->getControlKeyPressed()) || 
-            m_buttonIsActivated) && !m_panEditor;
+            m_buttonIsActivated || m_toolActivatedForOnce) && !m_panEditor;
     #else
-        return m_buttonIsActivated;
+        return m_buttonIsActivated || m_toolActivatedForOnce;
     #endif
 }
 

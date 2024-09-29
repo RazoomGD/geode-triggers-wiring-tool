@@ -1,7 +1,7 @@
 #include "EditLogic.hpp"
 #include "../EditorUI.hpp"
 
-void EditLogic::onMainButton(CCObject * sender) {
+void EditLogic::onMainButton(CCObject * sender, bool showDebug) {
     auto btn = static_cast<CCMenuItemSpriteExtra*>(sender);
     auto oldSprite = btn->getNormalImage();
     m_buttonIsActivated = !m_buttonIsActivated;
@@ -10,12 +10,12 @@ void EditLogic::onMainButton(CCObject * sender) {
         sprite->setScale(oldSprite->getScale());
         btn->setSprite(sprite);
         resetTool();
-        m_editorInstance->showDebugText("Edit mode is on");
+        if (showDebug) m_editorInstance->showDebugText("Edit mode is on");
     } else {
         auto sprite = CCSprite::createWithSpriteFrameName("TWT_tool_off.png"_spr);
         sprite->setScale(oldSprite->getScale());
         btn->setSprite(sprite);
-        m_editorInstance->showDebugText("Edit mode is off");
+        if (showDebug) m_editorInstance->showDebugText("Edit mode is off");
     }
 }
 

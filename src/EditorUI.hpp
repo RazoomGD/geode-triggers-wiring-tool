@@ -29,6 +29,8 @@ class $modify(MyEditorUI, EditorUI) {
         bool m_defaultIsCopyGroup = false;
         bool m_previewModeColorfulLines = false;
         bool m_previewAllWhenNotSelected = true;
+        bool m_autoDisable = false;
+        bool m_doubleClickModifier = false;
     };
 
     struct Fields {

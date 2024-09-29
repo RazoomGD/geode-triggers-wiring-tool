@@ -13,6 +13,7 @@ bool EditLogic::init() {
     // initDrawingLayer();
     setKeybinds();
     this->schedule(SEL_SCHEDULE(&EditLogic::controlTargetObjectCallback), 0.f);
+    initDrawingLayer();
     log::debug("init edit logic done");
     return true;
 }
