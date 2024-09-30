@@ -130,6 +130,7 @@ void EditLogic::createLowerMenuForVariant(Variant variant) {
     switch (menuType) {
         case lowerMenuType::selectGroup: {
             auto commonGroups = getObjectsCommonGroups(filteredObjects);
+            if (oldVal) lowerMenuConfig.push_back({std::format("old ({})", oldVal), oldVal});
             for (unsigned i = 0; i < commonGroups.size(); i++) {
                 lowerMenuConfig.push_back({std::format("group {}", commonGroups.at(i)), commonGroups.at(i)});
             }
@@ -137,7 +138,6 @@ void EditLogic::createLowerMenuForVariant(Variant variant) {
                 int nextFree = m_globalConfig.m_nextFreeGroup;
                 lowerMenuConfig.push_back({std::format("next ({})", nextFree), nextFree});
             }
-            if (oldVal) lowerMenuConfig.push_back({std::format("old ({})", oldVal), oldVal});
             lowerMenuConfig.push_back({"None", -1});
             break;
         }
@@ -170,26 +170,26 @@ void EditLogic::createLowerMenuForVariant(Variant variant) {
             auto allItemIds = getItemsAllIds(filteredObjects);
             auto nextFreeItem = m_editorInstance->m_fields->m_modSettings.m_fixedNextFreeItem ?
                 getNextFreeItemFixed() : LevelEditorLayer::get()->getNextFreeItemID(nullptr);
+            if (oldVal) lowerMenuConfig.push_back({std::format("old ({})", oldVal), oldVal});
             for (unsigned i = 0; i < allItemIds.size(); i++) {
                 if (allItemIds.at(i)) {
                     lowerMenuConfig.push_back({std::format("item {}", allItemIds.at(i)), allItemIds.at(i)});
                 }
             }
             lowerMenuConfig.push_back({std::format("next ({})", nextFreeItem), nextFreeItem});
-            if (oldVal) lowerMenuConfig.push_back({std::format("old ({})", oldVal), oldVal});
             lowerMenuConfig.push_back({"None", -1});
             break;
         }
         case lowerMenuType::selectCollision: {
             auto allCollisionIds = getCollisionsAllIds(filteredObjects);
             auto nextFreeCollision = getNextFreeBlock();
+            if (oldVal) lowerMenuConfig.push_back({std::format("old ({})", oldVal), oldVal});
             for (unsigned i = 0; i < allCollisionIds.size(); i++) {
                 if (allCollisionIds.at(i)) {
                     lowerMenuConfig.push_back({std::format("block {}", allCollisionIds.at(i)), allCollisionIds.at(i)});
                 }
             }
             lowerMenuConfig.push_back({std::format("next ({})", nextFreeCollision), nextFreeCollision});
-            if (oldVal) lowerMenuConfig.push_back({std::format("old ({})", oldVal), oldVal});
             lowerMenuConfig.push_back({"None", -1});
             break;
         }

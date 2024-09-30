@@ -44,6 +44,23 @@ struct SearchResult {
 
 
 const std::map<objId, std::vector<ObjField>> PREVIEW_CONFIG = {
+    {3027, { // teleport orb
+        {"Target", "51", fieldType::groupIdField, {}},
+    }},
+    {1594, { // button orb
+        {"Target", "51", fieldType::groupIdField, {}},
+    }},
+    {747, { // old teleport
+        {"Target", "51", fieldType::groupIdField, {}},
+    }},
+    {2902, { // new teleport
+        {"Target", "51", fieldType::groupIdField, {}},
+    }},
+    {2063, { // checkpoint
+        {"Target", "51", fieldType::groupIdField, {}},
+        {"Target_pos", "71", fieldType::groupIdField, {}},
+        {"Respawn_group", "448", fieldType::groupIdField, {}},
+    }},
     {901, { // move trigger
         {"Target", "51", fieldType::groupIdField, {}},
         {"Target_pos", "71", fieldType::groupIdField, {{"100", "1"}}},

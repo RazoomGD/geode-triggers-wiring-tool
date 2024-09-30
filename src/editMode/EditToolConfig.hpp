@@ -91,8 +91,29 @@ struct Variant {
 };
 
 const Variant copyGroupDefaultVariant = {"Copy_group", "", {}, sourceFuncType::copyGroup, srcObjType::any};
-
+/*
+1,2063,2,585,3,105,107,1,11,1,36,1;
+1,2063,2,585,3,105,107,1,11,1,36,1,51,111,71,222,448,333;
+*/
 const std::map<objId, std::vector<Variant>> CONFIGURATION = {
+    {3027, { // teleport orb
+        {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+    }},
+    {1594, { // button orb
+        {"Spawn", "56,1,504,1,51,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
+        {"Toggle", "56,0,504,0,51,g", {{{"56", "1"}, "56,1"}}, sourceFuncType::addGr, srcObjType::any},
+    }},
+    {747, { // old teleport 
+        {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+    }},
+    {2902, { // new teleport
+        {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+    }},
+    {2063, { // checkpoint
+        {"Target", "51,g", {}, sourceFuncType::addGr, srcObjType::any},
+        {"Target_pos", "71,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
+        {"Respawn_group", "448,g", {}, sourceFuncType::addGrSM, srcObjType::trig},
+    }},
     {899, { // color trigger
         {"Color", "23,g", {}, sourceFuncType::color, srcObjType::any},
     }},
